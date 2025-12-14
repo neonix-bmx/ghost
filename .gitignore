@@ -40,14 +40,12 @@ build/*
 build-deps/*
 build-ghost/*
 build-ghost-toolchain/*
-target/*
-target/iso/boot/kernel
-target/iso/boot/loader
-target/iso/boot/ramdisk
-target/iso/boot/limine/limine-*.sys
-target/iso/boot/limine/limine-*.bin
-target/limine-*/*
+# Keep the target sources in-tree but ignore generated payloads explicitly
+target/ghost.iso
+target/iso/
+target/limine-*/
 target/limine-*.tar.gz
+target/ramdisk
 
 node_modules
 
