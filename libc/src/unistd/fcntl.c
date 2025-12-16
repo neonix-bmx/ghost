@@ -20,12 +20,32 @@
 
 #include "unistd.h"
 #include "errno.h"
+#include "fcntl.h"
+#include "ghost/filesystem.h"
+#include "ghost/tasks.h"
+#include <stdarg.h>
+
+
 
 /**
- *
+ * Minimal fcntl implementation: supports F_DUPFD.
  */
 int fcntl(int fildes, int cmd, ...) {
-	klog("warning: fcntl is not implemented");
+	if(cmd == F_DUPFD)
+	{
+		va_list ap;
+		va_start(ap, cmd);
+		int minfd = va_arg(ap, int);
+		va_end(ap);
+		if(minfd < 0) return -1;
+		g_pid pid = g_get_pid();
+				g_fd newfd = g_clone_fd_ts(fildes, pid, minfd, pid, NULL);
+
+		return (newfd == G_FD_NONE) ? -1 : newfd;
+	}
+	// Unsupported commands
+	klog("warning: fcntl cmd %d not implemented", cmd);
 	return -1;
 }
+
 

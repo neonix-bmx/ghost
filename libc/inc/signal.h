@@ -61,7 +61,9 @@ sig_handler_t signal(int sig, sig_handler_t handler);
  * 		zero if successful, otherwise non-zero
  */
 int raise(int sig);
+int kill(pid_t pid, int sig);
 
 __END_C
 
 #endif
+

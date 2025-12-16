@@ -99,6 +99,11 @@ int chdir(const char *path);
 int fchdir(int fd);
 int execve(const char* path, char* const argv[], char* const envp[]);
 int execv(const char* path, char* const argv[]);
+int pipe(int fds[2]);
+int dup(int oldfd);
+int dup2(int oldfd, int newfd);
+pid_t fork(void);
+
 
 __END_C
 
