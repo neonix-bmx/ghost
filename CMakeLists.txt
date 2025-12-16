@@ -88,7 +88,7 @@ if(GHOST_BUILD_PORTS)
   add_custom_command(
     OUTPUT ${PORTS_STAMP}
     COMMAND ${CMAKE_COMMAND} -E env ${_ports_env}
-            bash -c \"bash port.sh zlib/1.2.8 && bash ${CMAKE_SOURCE_DIR}/patches/ports/fix-la.sh && bash port.sh pixman/0.38.0 && bash ${CMAKE_SOURCE_DIR}/patches/ports/fix-la.sh && bash port.sh ncurses/6.4 && bash port.sh libpng/1.6.34 && bash ${CMAKE_SOURCE_DIR}/patches/ports/fix-la.sh && bash port.sh freetype/2.5.3 && bash ${CMAKE_SOURCE_DIR}/patches/ports/fix-la.sh && bash port.sh cairo/1.12.18 && bash ${CMAKE_SOURCE_DIR}/patches/ports/fix-la.sh\"
+            bash -c \"bash port.sh zlib/1.2.8 && bash ${CMAKE_SOURCE_DIR}/patches/ports/fix-la.sh && bash port.sh pixman/0.38.0 && bash ${CMAKE_SOURCE_DIR}/patches/ports/fix-la.sh && bash port.sh libpng/1.6.34 && bash ${CMAKE_SOURCE_DIR}/patches/ports/fix-la.sh && bash port.sh freetype/2.5.3 && bash ${CMAKE_SOURCE_DIR}/patches/ports/fix-la.sh && bash port.sh cairo/1.12.18 && bash ${CMAKE_SOURCE_DIR}/patches/ports/fix-la.sh\"
     COMMAND ${CMAKE_COMMAND} -E touch ${PORTS_STAMP}
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/patches/ports
     USES_TERMINAL
