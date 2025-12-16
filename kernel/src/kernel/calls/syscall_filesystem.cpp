@@ -200,3 +200,42 @@ void syscallFsFstat(g_task* task, g_syscall_fs_fstat* data)
 {
 	data->status = filesystemFstat(task, data->fd, data->out);
 }
+
+void syscallFsPublishPipe(g_task* task, g_syscall_fs_publish_pipe* data)
+{
+	if(!data->name)
+	{
+		data->status = G_FS_PUBLISH_PIPE_INVALID_NAME;
+		return;
+	}
+
+	int nameLen = stringLength(data->name);
+	if(nameLen <= 0 || nameLen >= G_FILENAME_MAX || stringIndexOf(data->name, '/') >= 0)
+	{
+		data->status = G_FS_PUBLISH_PIPE_INVALID_NAME;
+		return;
+	}
+
+	g_file_descriptor* descriptor = filesystemProcessGetDescriptor(task->process->id, data->pipe_fd);
+	if(!descriptor)
+	{
+		data->status = G_FS_PUBLISH_PIPE_INVALID_FD;
+		return;
+	}
+
+	g_fs_node* node = filesystemGetNode(descriptor->nodeId);
+	if(!node || node->type != G_FS_NODE_TYPE_PIPE)
+	{
+		data->status = G_FS_PUBLISH_PIPE_NOT_A_PIPE;
+		return;
+	}
+
+	auto status = filesystemExposePipe(data->name, node, data->blocking, nullptr);
+	if(status != G_FS_OPEN_SUCCESSFUL)
+	{
+		data->status = G_FS_PUBLISH_PIPE_ERROR;
+		return;
+	}
+
+	data->status = G_FS_PUBLISH_PIPE_SUCCESS;
+}

@@ -151,6 +151,7 @@ void syscallRegisterAll()
 	_syscallRegister(G_SYSCALL_FS_READ_DIRECTORY, (g_syscall_handler) syscallFsReadDirectory, true);
 	_syscallRegister(G_SYSCALL_FS_CLOSE_DIRECTORY, (g_syscall_handler) syscallFsCloseDirectory, true);
 	_syscallRegister(G_SYSCALL_FS_REAL_PATH, (g_syscall_handler) syscallFsRealPath, true);
+	_syscallRegister(G_SYSCALL_FS_PUBLISH_PIPE, (g_syscall_handler) syscallFsPublishPipe, true);
 
 	// System
 	_syscallRegister(G_SYSCALL_LOG, (g_syscall_handler) syscallLog);

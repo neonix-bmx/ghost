@@ -364,6 +364,18 @@ typedef struct
 }__attribute__((packed)) g_syscall_fs_create_node;
 
 /**
+ * @security-level DRIVER
+ */
+typedef struct
+{
+    const char* name;
+    g_fd pipe_fd;
+    g_bool blocking;
+
+    g_fs_publish_pipe_status status;
+}__attribute__((packed)) g_syscall_fs_publish_pipe;
+
+/**
  * @field path
  * 		buffer containing the folders path
  *

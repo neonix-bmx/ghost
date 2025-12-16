@@ -35,6 +35,7 @@
 static g_fs_node* filesystemRoot;
 static g_fs_node* mountFolder;
 static g_fs_node* pipesFolder;
+static g_fs_node* devicesFolder;
 
 static g_fs_virt_id filesystemNextNodeId;
 static g_mutex filesystemNextNodeIdLock;
@@ -94,6 +95,11 @@ void filesystemCreateRoot()
 	pipesFolder = filesystemCreateNode(G_FS_NODE_TYPE_MOUNTPOINT, "pipes");
 	pipesFolder->delegate = pipeDelegate;
 	filesystemAddChild(mountFolder, pipesFolder);
+
+	// /dev managed by the kernel for character/block devices
+	devicesFolder = filesystemCreateNode(G_FS_NODE_TYPE_FOLDER, "dev");
+	devicesFolder->delegate = filesystemCreateDelegate();
+	filesystemAddChild(filesystemRoot, devicesFolder);
 }
 
 g_fs_node* filesystemCreateNode(g_fs_node_type type, const char* name)
@@ -145,6 +151,11 @@ g_fs_node* filesystemGetNode(g_fs_virt_id id)
 g_fs_node* filesystemGetRoot()
 {
 	return filesystemRoot;
+}
+
+g_fs_node* filesystemGetDevicesFolder()
+{
+	return devicesFolder;
 }
 
 g_fs_delegate* filesystemCreateDelegate()
@@ -519,6 +530,35 @@ g_fs_open_status filesystemTruncate(g_fs_node* file)
 		return G_FS_OPEN_ERROR;
 
 	return delegate->truncate(file);
+}
+
+g_fs_open_status filesystemExposePipe(const char* name, g_fs_node* sourcePipe, g_bool blocking, g_fs_node** outNode)
+{
+	if(!devicesFolder || !sourcePipe || sourcePipe->type != G_FS_NODE_TYPE_PIPE)
+		return G_FS_OPEN_ERROR;
+
+	g_fs_node* existing = nullptr;
+	filesystemFindExistingChild(devicesFolder, name, &existing);
+	g_fs_node* target = existing;
+
+	if(!target)
+	{
+		target = filesystemCreateNode(G_FS_NODE_TYPE_PIPE, name);
+		filesystemAddChild(devicesFolder, target);
+	}
+	else if(target->type != G_FS_NODE_TYPE_PIPE)
+	{
+		return G_FS_OPEN_ERROR;
+	}
+
+	target->delegate = sourcePipe->delegate;
+	target->physicalId = sourcePipe->physicalId;
+	target->blocking = blocking;
+	target->upToDate = true;
+
+	if(outNode)
+		*outNode = target;
+	return G_FS_OPEN_SUCCESSFUL;
 }
 
 g_fs_pipe_status filesystemCreatePipe(g_bool blocking, g_fs_node** outPipeNode)

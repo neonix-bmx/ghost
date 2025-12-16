@@ -27,29 +27,10 @@ bool ac97OpenChannel(g_ac97_channel* channel)
 	if(!channel)
 		return false;
 
-	g_tid driver = g_task_await_by_name(G_AC97_DRIVER_NAME);
-	if(driver == G_TID_NONE)
+	g_fd fd = g_open_f(AC97_DEVICE_PATH, G_FILE_FLAG_MODE_WRITE | G_FILE_FLAG_MODE_BINARY);
+	if(fd == G_FD_NONE)
 		return false;
 
-	g_message_transaction tx = g_get_message_tx_id();
-
-	g_ac97_open_request request{};
-	request.header.command = G_AC97_COMMAND_OPEN_CHANNEL;
-	request.clientTask = g_get_tid();
-
-	g_send_message_t(driver, &request, sizeof(request), tx);
-
-	size_t bufLen = sizeof(g_message_header) + sizeof(g_ac97_open_response);
-	uint8_t buf[bufLen];
-
-	if(g_receive_message_t(buf, bufLen, tx) != G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
-		return false;
-
-	auto response = (g_ac97_open_response*) G_MESSAGE_CONTENT(buf);
-	if(response->status != G_AC97_STATUS_SUCCESS)
-		return false;
-
-	channel->pcmPipe = response->pcmPipe;
+	channel->pcmPipe = fd;
 	return true;
 }
-

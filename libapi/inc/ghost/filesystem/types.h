@@ -112,6 +112,16 @@ typedef int g_fs_create_node_status;
 #define G_FS_CREATE_NODE_STATUS_FAILED_NO_PARENT ((g_fs_create_node_status) 2)
 
 /**
+ * Status codes for exposing an existing pipe as a device node.
+ */
+typedef int g_fs_publish_pipe_status;
+#define G_FS_PUBLISH_PIPE_SUCCESS ((g_fs_publish_pipe_status) 0)
+#define G_FS_PUBLISH_PIPE_INVALID_FD ((g_fs_publish_pipe_status) 1)
+#define G_FS_PUBLISH_PIPE_INVALID_NAME ((g_fs_publish_pipe_status) 2)
+#define G_FS_PUBLISH_PIPE_NOT_A_PIPE ((g_fs_publish_pipe_status) 3)
+#define G_FS_PUBLISH_PIPE_ERROR ((g_fs_publish_pipe_status) 4)
+
+/**
  * Status codes for internal use during discovery
  */
 typedef int g_fs_discovery_status;

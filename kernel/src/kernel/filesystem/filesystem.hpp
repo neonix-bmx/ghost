@@ -155,6 +155,11 @@ g_fs_delegate* filesystemCreateDelegate();
 g_fs_node* filesystemGetRoot();
 
 /**
+ * Returns the /dev directory node.
+ */
+g_fs_node* filesystemGetDevicesFolder();
+
+/**
  * Searches for the delegate responsible for this node.
  */
 g_fs_delegate* filesystemFindDelegate(g_fs_node* node);
@@ -206,6 +211,12 @@ g_fs_open_status filesystemCreateFile(g_fs_node* parent, const char* name, g_fs_
  * Truncates a file.
  */
 g_fs_open_status filesystemTruncate(g_fs_node* file);
+
+/**
+ * Creates or updates an alias for a pipe node under /dev.
+ */
+g_fs_open_status filesystemExposePipe(const char* name, g_fs_node* sourcePipe, g_bool blocking,
+                                      g_fs_node** outNode);
 
 /**
  * Creates a new pipe on the filesystem.

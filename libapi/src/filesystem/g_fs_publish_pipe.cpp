@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,42 +18,17 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_SYSCALL_FS__
-#define __KERNEL_SYSCALL_FS__
+#include "ghost/syscall.h"
+#include "ghost/filesystem.h"
+#include "ghost/filesystem/callstructs.h"
 
-#include "kernel/tasking/tasking.hpp"
-#include <ghost/filesystem/callstructs.h>
+g_fs_publish_pipe_status g_fs_publish_pipe(const char* name, g_fd pipe_fd, g_bool blocking)
+{
+	g_syscall_fs_publish_pipe data;
+	data.name = name;
+	data.pipe_fd = pipe_fd;
+	data.blocking = blocking;
 
-void syscallFsOpen(g_task* task, g_syscall_fs_open* data);
-
-void syscallFsSeek(g_task* task, g_syscall_fs_seek* data);
-
-void syscallFsRead(g_task* task, g_syscall_fs_read* data);
-
-void syscallFsWrite(g_task* task, g_syscall_fs_write* data);
-
-void syscallFsClose(g_task* task, g_syscall_fs_close* data);
-
-void syscallFsLength(g_task* task, g_syscall_fs_length* data);
-
-void syscallFsTell(g_task* task, g_syscall_fs_tell* data);
-
-void syscallFsStat(g_task* task, g_syscall_fs_stat* data);
-
-void syscallFsFstat(g_task* task, g_syscall_fs_fstat* data);
-
-void syscallFsCloneFd(g_task* task, g_syscall_fs_clonefd* data);
-
-void syscallFsPipe(g_task* task, g_syscall_fs_pipe* data);
-
-void syscallFsOpenDirectory(g_task* task, g_syscall_fs_open_directory* data);
-
-void syscallFsReadDirectory(g_task* task, g_syscall_fs_read_directory* data);
-
-void syscallFsCloseDirectory(g_task* task, g_syscall_fs_close_directory* data);
-
-void syscallFsRealPath(g_task* task, g_syscall_fs_real_path* data);
-
-void syscallFsPublishPipe(g_task* task, g_syscall_fs_publish_pipe* data);
-
-#endif
+	g_syscall(G_SYSCALL_FS_PUBLISH_PIPE, (g_address) &data);
+	return data.status;
+}

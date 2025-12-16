@@ -23,8 +23,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <ghost/filesystem/types.h>
-#include <ghost/messages/types.h>
-#include <ghost/tasks/types.h>
 
 #define G_AC97_DRIVER_NAME "ac97driver"
 
@@ -81,29 +79,7 @@ struct ac97_buffer_descriptor
 	uint16_t control;
 } __attribute__((packed));
 
-typedef uint8_t g_ac97_command;
-#define G_AC97_COMMAND_OPEN_CHANNEL ((g_ac97_command) 0)
-
-typedef uint8_t g_ac97_status;
-#define G_AC97_STATUS_SUCCESS ((g_ac97_status) 0)
-#define G_AC97_STATUS_FAILURE ((g_ac97_status) 1)
-
-struct g_ac97_request_header
-{
-	g_ac97_command command;
-} __attribute__((packed));
-
-struct g_ac97_open_request
-{
-	g_ac97_request_header header;
-	g_tid clientTask;
-} __attribute__((packed));
-
-struct g_ac97_open_response
-{
-	g_ac97_status status;
-	g_fd pcmPipe;
-} __attribute__((packed));
+constexpr const char* AC97_DEVICE_PATH = "/dev/ac97";
 
 struct g_ac97_channel
 {
@@ -111,4 +87,3 @@ struct g_ac97_channel
 };
 
 bool ac97OpenChannel(g_ac97_channel* channel);
-

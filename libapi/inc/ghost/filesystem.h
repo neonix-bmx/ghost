@@ -256,6 +256,21 @@ g_fs_create_node_status g_fs_create_node(uint32_t parent, char* name, g_fs_node_
                                          uint32_t* out_created_id);
 
 /**
+ * Publishes a pipe descriptor under /dev so that other tasks can open it like a
+ * character device.
+ *
+ * @param name
+ * 		name of the device node (relative to /dev)
+ * @param pipe_fd
+ * 		local descriptor referencing the pipe to expose
+ * @param blocking
+ * 		whether readers/writers should block when the pipe is empty/full
+ *
+ * @security-level DRIVER
+ */
+g_fs_publish_pipe_status g_fs_publish_pipe(const char* name, g_fd pipe_fd, g_bool blocking);
+
+/**
  * Clones a file descriptor in a process to another processes. Creates a new file
  * descriptor in the target process.
  *

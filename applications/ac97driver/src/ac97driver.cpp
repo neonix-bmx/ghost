@@ -45,7 +45,6 @@ struct ac97_context
 	uint64_t bdlPhys = 0;
 	dma_buffer buffers[AC97_BDL_ENTRY_COUNT]{};
 	uint8_t lvi = 0;
-	g_fd clientPipe = G_FD_NONE;
 	g_fd driverPipe = G_FD_NONE;
 	g_device_id deviceId = 0;
 	size_t streamBytes = 0;
@@ -271,52 +270,23 @@ void feederLoop()
 
 bool preparePcmPipe()
 {
-	if(g_pipe_b(&g_ctx.clientPipe, &g_ctx.driverPipe, false) != G_FS_PIPE_SUCCESSFUL)
+	g_fd publishFd = G_FD_NONE;
+	if(g_pipe_b(&publishFd, &g_ctx.driverPipe, false) != G_FS_PIPE_SUCCESSFUL)
 	{
 		AC97_LOG("failed to create PCM pipe");
 		return false;
 	}
-	AC97_LOG("pcm pipe ready client=%d driver=%d (non-blocking)", g_ctx.clientPipe, g_ctx.driverPipe);
+
+	auto status = g_fs_publish_pipe("ac97", publishFd, false);
+	if(status != G_FS_PUBLISH_PIPE_SUCCESS)
+	{
+		AC97_LOG("failed to publish PCM pipe (status=%d)", status);
+		return false;
+	}
+
+	g_close(publishFd);
+	AC97_LOG("pcm pipe ready at /dev/ac97 driver=%d (non-blocking)", g_ctx.driverPipe);
 	return true;
-}
-
-void handleOpenRequest(g_tid sender, g_message_transaction tx)
-{
-	g_ac97_open_response response{};
-	response.status = G_AC97_STATUS_FAILURE;
-
-	g_pid targetPid = g_get_pid_for_tid(sender);
-	if(targetPid != G_PID_NONE)
-	{
-		g_fd clientFd = g_clone_fd(g_ctx.clientPipe, g_get_pid(), targetPid);
-		if(clientFd >= 0)
-		{
-			response.status = G_AC97_STATUS_SUCCESS;
-			response.pcmPipe = clientFd;
-		}
-	}
-
-	g_send_message_t(sender, &response, sizeof(response), tx);
-}
-
-void messageLoop()
-{
-	size_t bufLen = sizeof(g_message_header) + sizeof(g_ac97_open_request);
-	uint8_t buffer[bufLen];
-
-	while(true)
-	{
-		if(g_receive_message(buffer, bufLen) != G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
-			continue;
-
-		auto header = (g_message_header*) buffer;
-		auto request = (g_ac97_request_header*) G_MESSAGE_CONTENT(buffer);
-
-		if(request->command == G_AC97_COMMAND_OPEN_CHANNEL)
-		{
-			handleOpenRequest(header->sender, header->transaction);
-		}
-	}
 }
 
 bool initializeDriver()
@@ -362,8 +332,7 @@ int main()
 		AC97_LOG("registered audio device id %u", g_ctx.deviceId);
 	}
 
-	g_tid feeder = g_create_task((void*) feederLoop);
-	(void) feeder;
-	messageLoop();
+	AC97_LOG("ready: waiting for PCM data via /dev/ac97");
+	feederLoop();
 	return 0;
 }
