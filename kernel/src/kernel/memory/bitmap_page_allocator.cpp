@@ -157,7 +157,7 @@ void bitmapPageAllocatorMarkFree(g_bitmap_page_allocator* allocator, g_physical_
 			size_t totalBitIndex = (address - bitmap->base) / G_PAGE_SIZE;
 			size_t bitmapIndex = totalBitIndex / G_BITMAP_BITS_PER_ENTRY;
 			size_t bitmapBit = totalBitIndex % G_BITMAP_BITS_PER_ENTRY;
-			bitmap->entries[bitmapIndex] &= ~(1ULL << bitmapBit);
+			bitmap->entries[bitmapIndex] |= (1ULL << bitmapBit);
 
 			mutexAcquire(&allocator->lock);
 			allocator->freePageCount++;

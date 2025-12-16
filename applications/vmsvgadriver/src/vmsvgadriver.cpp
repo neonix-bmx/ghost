@@ -22,6 +22,7 @@
 #include "svga.hpp"
 
 #include <libdevice/manager.hpp>
+#include <libpci/driver.hpp>
 #include <ghost.h>
 #include <cstdio>
 #include <libvideo/videodriver.hpp>
@@ -33,18 +34,19 @@ int main()
 {
 	g_task_register_name("vmsvgadriver");
 	klog("started");
+	g_task_await_by_name(G_PCI_DRIVER_NAME);
 
 	g_svga_initialized = svgaInitializeDevice();
 	if(!g_svga_initialized)
 	{
-		klog("failed to initialize SVGA controller");
-		return -1;
+				klog("failed to initialize SVGA controller");
+		g_exit(-1);
 	}
 
-	if(!deviceManagerRegisterDevice(G_DEVICE_TYPE_VIDEO, g_get_tid(), &deviceId))
+		if(!deviceManagerRegisterDevice(G_DEVICE_TYPE_VIDEO, g_get_tid(), &deviceId))
 	{
 		klog("failed to register device with device manager");
-		return -1;
+		g_exit(-1);
 	}
 	klog("registered VMSVGA device %i", deviceId);
 
@@ -66,45 +68,69 @@ void vmsvgaDriverReceiveMessages()
 		auto header = (g_message_header*) buf;
 		auto request = (g_video_request_header*) G_MESSAGE_CONTENT(buf);
 
-		if(request->command == G_VIDEO_COMMAND_SET_MODE)
+				
+				if(request->command == G_VIDEO_COMMAND_SET_MODE)
 		{
 			auto modeSetRequest = (g_video_set_mode_request*) request;
-
 			g_video_set_mode_response response{};
+			response.status = G_VIDEO_SET_MODE_STATUS_FAILED; // Default: başarısız
+
 			if(g_svga_initialized)
 			{
-				klog("vmsvgadriver: setting video mode to %ix%i@%i", modeSetRequest->width, modeSetRequest->height,
-				     modeSetRequest->bpp);
+				klog("vmsvgadriver: setting video mode to %ix%i@%i",
+					modeSetRequest->width, modeSetRequest->height, modeSetRequest->bpp);
 				svgaSetMode(modeSetRequest->width, modeSetRequest->height, modeSetRequest->bpp);
 
-				void* addressInRequestersSpace = g_share_mem(svgaGetFb(), svgaGetFbSize(), header->sender);
+				void* fb = svgaGetFb();
+				size_t fbsz = svgaGetFbSize();
+				klog("vmsvgadriver: fb pointer = %p, fb size = %u", fb, (unsigned)fbsz);
 
-				response.status = G_VIDEO_SET_MODE_STATUS_SUCCESS;
-				response.mode_info.lfb = (g_address) addressInRequestersSpace;
-				response.mode_info.resX = modeSetRequest->width; // TODO read back from SVGA registers
-				response.mode_info.resY = modeSetRequest->height;
-				response.mode_info.bpp = modeSetRequest->bpp;
-				response.mode_info.bpsl = (uint16_t) (modeSetRequest->width * 4); // TODO
-				response.mode_info.explicit_update = true;
+				if(fb && fbsz)
+				{
+					void* addressInRequestersSpace = g_share_mem(fb, fbsz, header->sender);
+					klog("vmsvgadriver: g_share_mem returned %p", addressInRequestersSpace);
+					uint32_t pitchReg = svgaReadReg(SVGA_REG_BYTES_PER_LINE);
+					uint32_t pitch = pitchReg ? pitchReg : (uint32_t)modeSetRequest->width * (modeSetRequest->bpp / 8);
+					klog("vmsvgadriver: pitch bytes-per-line reg=%u using=%u", pitchReg, pitch);
+
+					if(addressInRequestersSpace)
+					{
+											response.status = G_VIDEO_SET_MODE_STATUS_SUCCESS;
+					response.mode_info.lfb = (g_address) addressInRequestersSpace;
+					response.mode_info.resX = modeSetRequest->width;
+					response.mode_info.resY = modeSetRequest->height;
+					response.mode_info.bpp = modeSetRequest->bpp;
+					// Prefer device-reported pitch if available
+					uint32_t pitchReg = svgaReadReg(SVGA_REG_BYTES_PER_LINE);
+					uint32_t pitch = pitchReg ? pitchReg : (uint32_t)modeSetRequest->width * (modeSetRequest->bpp / 8);
+					response.mode_info.bpsl = (uint16_t) pitch;
+					response.mode_info.explicit_update = true;
+
+					}
+					else
+					{
+						klog("vmsvgadriver: failed to share framebuffer with task %i", header->sender);
+					}
+				}
+				else
+				{
+					klog("vmsvgadriver: fb pointer or size invalid, fb=%p, size=%u", fb, (unsigned)fbsz);
+				}
 			}
 			else
 			{
-				response.status = G_VIDEO_SET_MODE_STATUS_FAILED;
+				klog("vmsvgadriver: svga not initialized!");
 			}
 			g_send_message_t(header->sender, &response, sizeof(response), header->transaction);
 		}
 		else if(request->command == G_VIDEO_COMMAND_UPDATE)
 		{
-			if(g_svga_initialized)
-			{
-				auto updateRequest = (g_video_update_request*) request;
-				svgaUpdate(updateRequest->x, updateRequest->y, updateRequest->width, updateRequest->height);
-				g_yield();
-			}
-		}
-		else
-		{
-			klog("vmsvgadriver: received unknown command %i from task %i", request->command, header->sender);
+			auto upd = (g_video_update_request*) request;
+			// Clamp to current mode dimensions (SVGA FIFO update requires valid rect)
+			uint32_t w = upd->width ? upd->width : 1;
+			uint32_t h = upd->height ? upd->height : 1;
+			svgaUpdate(upd->x, upd->y, w, h);
 		}
 	}
 }
+

@@ -30,11 +30,12 @@ bool deviceManagerRegisterDevice(g_device_type type, g_tid handler, g_device_id*
 	g_tid managerId = g_task_await_by_name(G_DEVICE_MANAGER_NAME);
 	auto tx = g_get_message_tx_id();
 
-	g_device_manager_register_device_request request{};
-	request.type = G_DEVICE_MANAGER_REGISTER_DEVICE;
-	request.handler = handler;
+		g_device_manager_register_device_request request{};
+	request.header.command = G_DEVICE_MANAGER_REGISTER_DEVICE;
 	request.type = type;
+	request.handler = handler;
 	g_send_message_t(managerId, &request, sizeof(request), tx);
+
 
 	bool success = false;
 	size_t bufLen = sizeof(g_message_header) + sizeof(g_device_manager_register_device_response);

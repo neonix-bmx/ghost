@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 #include <ghost.h>
+#include <ghost/messages.h>
 #include <libpci/driver.hpp>
 
 struct g_pci_device
@@ -30,6 +31,9 @@ struct g_pci_device
     uint8_t bus;
     uint8_t device;
     uint8_t function;
+
+    uint16_t vendorId;
+    uint16_t deviceId;
 
     uint8_t classCode;
     uint8_t subclassCode;
@@ -47,22 +51,28 @@ void pciDriverScanBus();
  * Reads a BAR value
  */
 uint32_t pciConfigGetBAR(g_pci_device* dev, int bar);
+uint32_t pciConfigGetBARAt(uint8_t bus, uint8_t device, uint8_t function, int bar);
 
 /**
  * Reads the size of a BAR. The value that is returned after writing to the BAR contains the fixed bits, hence the flipping.
  */
 uint32_t pciConfigGetBARSize(g_pci_device* dev, int bar);
+uint32_t pciConfigGetBARSizeAt(uint8_t bus, uint8_t device, uint8_t function, int bar);
 
 /**
  * Reads from or writes to the PCI configuration space.
 */
 uint8_t pciConfigReadByte(g_pci_device* dev, uint8_t offset);
+uint8_t pciConfigReadByteAt(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset);
 uint16_t pciConfigReadWord(g_pci_device* dev, uint8_t offset);
+uint16_t pciConfigReadWordAt(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset);
 uint32_t pciConfigReadDword(g_pci_device* dev, uint8_t offset);
 uint32_t pciConfigReadDwordAt(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset);
 
 void pciConfigWriteByte(g_pci_device* dev, uint8_t offset, uint8_t value);
+void pciConfigWriteByteAt(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint8_t value);
 void pciConfigWriteWord(g_pci_device* dev, uint8_t offset, uint16_t value);
+void pciConfigWriteWordAt(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint16_t value);
 void pciConfigWriteDword(g_pci_device* dev, uint8_t offset, uint32_t value);
 void pciConfigWriteDwordAt(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint32_t value);
 
@@ -70,16 +80,17 @@ void pciConfigWriteDwordAt(uint8_t bus, uint8_t device, uint8_t function, uint8_
  * Enables or disables memory space, IO space and bus mastering.
  */
 void pciEnableResourceAccess(g_pci_device* dev, bool enabled);
+void pciEnableResourceAccessAddress(g_pci_device_address address, bool enabled);
 
 /**
- * Receives incoming messages.
+ * Serves incoming /dev requests.
  */
-void pciDriverReceiveMessages();
-void pciDriverHandleListDevices(g_tid sender, g_message_transaction transaction);
-void pciDriverHandleWriteConfig(g_tid sender, g_message_transaction transaction, g_pci_write_config_request* request);
-void pciDriverHandleReadConfig(g_tid sender, g_message_transaction transaction, g_pci_read_config_request* request);
-void pciDriverHandleEnableResourceAccess(g_tid sender, g_message_transaction transaction, g_pci_enable_resource_access_request* request);
-void pciDriverHandleReadBar(g_tid sender, g_message_transaction transaction, g_pci_read_bar_request* request);
-void pciDriverHandleReadBarSize(g_tid sender, g_message_transaction transaction, g_pci_read_bar_size_request* request);
+void pciDriverServeRequests();
+void pciDriverHandleListDevices(g_tid sender, g_message_transaction tx);
+void pciDriverHandleWriteConfig(g_tid sender, g_message_transaction tx, g_pci_write_config_request* request);
+void pciDriverHandleReadConfig(g_tid sender, g_message_transaction tx, g_pci_read_config_request* request);
+void pciDriverHandleEnableResourceAccess(g_tid sender, g_message_transaction tx, g_pci_enable_resource_access_request* request);
+void pciDriverHandleReadBar(g_tid sender, g_message_transaction tx, g_pci_read_bar_request* request);
+void pciDriverHandleReadBarSize(g_tid sender, g_message_transaction tx, g_pci_read_bar_size_request* request);
 
 #endif

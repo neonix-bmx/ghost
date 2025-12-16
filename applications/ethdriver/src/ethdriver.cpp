@@ -180,13 +180,8 @@ bool identifyDevice()
 		   devices[i].subclassCode != PCI_02_SUBCLASS_ETHERNET)
 			continue;
 
-		uint32_t vendorId = 0;
-		if(!pciDriverReadConfig(devices[i].deviceAddress, PCI_CONFIG_OFF_VENDOR_ID, 2, &vendorId))
-			continue;
-
-		uint32_t deviceId = 0;
-		if(!pciDriverReadConfig(devices[i].deviceAddress, PCI_CONFIG_OFF_DEVICE_ID, 2, &deviceId))
-			continue;
+		uint32_t vendorId = devices[i].vendorId;
+		uint32_t deviceId = devices[i].deviceId;
 
 		if(vendorId == INTEL_VENDOR_ID && deviceId == INTEL_E1000_DEVICE_ID)
 		{
@@ -454,18 +449,9 @@ void handleInitialize(g_tid sender, g_message_transaction transaction, g_eth_ini
 {
 	g_ctx.rxPartner = request->rxPartnerTask;
 
-	g_pid targetPid = g_get_pid_for_tid(sender);
-	g_pid sourcePid = g_get_pid();
-
 	g_eth_initialize_response response{};
 	response.linkUp = g_ctx.linkReady ? 1 : 0;
 	response.status = G_ETH_STATUS_SUCCESS;
-	response.rxPipe = g_clone_fd(g_ctx.rxPipeRead, sourcePid, targetPid);
-	response.txPipe = g_clone_fd(g_ctx.txPipeWrite, sourcePid, targetPid);
-	if(response.rxPipe < 0 || response.txPipe < 0)
-	{
-		response.status = G_ETH_STATUS_FAILURE;
-	}
 	std::memcpy(response.mac, g_ctx.mac, sizeof(g_ctx.mac));
 
 	g_send_message_t(sender, &response, sizeof(response), transaction);
@@ -514,6 +500,17 @@ bool initializeDriver()
 		return false;
 	}
 
+	if(g_fs_publish_pipe("net/eth0/rx", g_ctx.rxPipeRead, false) != G_FS_PUBLISH_PIPE_SUCCESS)
+	{
+		ETH_LOG("failed to publish /dev/net/eth0/rx");
+		return false;
+	}
+	if(g_fs_publish_pipe("net/eth0/tx", g_ctx.txPipeWrite, true) != G_FS_PUBLISH_PIPE_SUCCESS)
+	{
+		ETH_LOG("failed to publish /dev/net/eth0/tx");
+		return false;
+	}
+
 	if(!mapMmio())
 		return false;
 
@@ -528,7 +525,6 @@ bool initializeDriver()
 		ETH_LOG("failed to initialize descriptors");
 		return false;
 	}
-
 	if(!readMac())
 	{
 		ETH_LOG("failed to obtain MAC, continuing with zeros");

@@ -25,6 +25,10 @@
 #include <ghost.h>
 
 #define G_PCI_DRIVER_NAME		"pcidriver"
+#define G_PCI_DEVICE_COMMAND_REL	"pci/cmd"
+#define G_PCI_DEVICE_RESPONSE_REL	"pci/rsp"
+#define G_PCI_DEVICE_COMMAND		"/dev/" G_PCI_DEVICE_COMMAND_REL
+#define G_PCI_DEVICE_RESPONSE		"/dev/" G_PCI_DEVICE_RESPONSE_REL
 
 /**
  * Packed type to more easily pass device id
@@ -60,6 +64,9 @@ struct g_pci_request_header
 struct g_pci_device_data
 {
     g_pci_device_address deviceAddress;
+
+    uint16_t vendorId;
+    uint16_t deviceId;
 
     uint8_t classCode;
     uint8_t subclassCode;

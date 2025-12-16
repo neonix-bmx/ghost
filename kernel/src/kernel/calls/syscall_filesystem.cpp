@@ -203,14 +203,14 @@ void syscallFsFstat(g_task* task, g_syscall_fs_fstat* data)
 
 void syscallFsPublishPipe(g_task* task, g_syscall_fs_publish_pipe* data)
 {
-	if(!data->name)
+	if(!data->name || *data->name == 0)
 	{
 		data->status = G_FS_PUBLISH_PIPE_INVALID_NAME;
 		return;
 	}
 
-	int nameLen = stringLength(data->name);
-	if(nameLen <= 0 || nameLen >= G_FILENAME_MAX || stringIndexOf(data->name, '/') >= 0)
+	int pathLen = stringLength(data->name);
+	if(pathLen >= G_PATH_MAX)
 	{
 		data->status = G_FS_PUBLISH_PIPE_INVALID_NAME;
 		return;

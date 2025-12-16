@@ -215,7 +215,7 @@ g_fs_open_status filesystemTruncate(g_fs_node* file);
 /**
  * Creates or updates an alias for a pipe node under /dev.
  */
-g_fs_open_status filesystemExposePipe(const char* name, g_fs_node* sourcePipe, g_bool blocking,
+g_fs_open_status filesystemExposePipe(const char* path, g_fs_node* sourcePipe, g_bool blocking,
                                       g_fs_node** outNode);
 
 /**

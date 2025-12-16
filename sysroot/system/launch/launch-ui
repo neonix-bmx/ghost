@@ -1,7 +1,14 @@
 
-# Start the visual environment
-print:"launching window server"
-	application:"/applications/windowserver.bin"
-	print:"window server launched"
+# Start the visual environment using fenster
+print:"launching fenster window server"
+	application:"/applications/fenster.bin"
+print:"waiting for window server registration"
 	wait:"windowserver/registration"
+
+# Start the GUI shell once the compositor is alive
+print:"launching desktop"
+	application:"/applications/desktop.bin"
+
+# Provide an interactive terminal in the GUI session
+print:"launching terminal"
 	application:"/applications/terminal.bin"

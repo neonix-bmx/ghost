@@ -71,13 +71,8 @@ bool findController()
 			continue;
 		}
 
-		uint32_t vendorId = 0;
-		uint32_t deviceId = 0;
-		if(!pciDriverReadConfig(devices[i].deviceAddress, PCI_CONFIG_OFF_VENDOR_ID, 2, &vendorId) ||
-		   !pciDriverReadConfig(devices[i].deviceAddress, PCI_CONFIG_OFF_DEVICE_ID, 2, &deviceId))
-		{
-			continue;
-		}
+		uint32_t vendorId = devices[i].vendorId;
+		uint32_t deviceId = devices[i].deviceId;
 
 		if(vendorId == 0x8086 && deviceId == 0x2415)
 		{
@@ -277,7 +272,7 @@ bool preparePcmPipe()
 		return false;
 	}
 
-	auto status = g_fs_publish_pipe("ac97", publishFd, false);
+	auto status = g_fs_publish_pipe("audio/ac97", publishFd, false);
 	if(status != G_FS_PUBLISH_PIPE_SUCCESS)
 	{
 		AC97_LOG("failed to publish PCM pipe (status=%d)", status);
@@ -285,7 +280,7 @@ bool preparePcmPipe()
 	}
 
 	g_close(publishFd);
-	AC97_LOG("pcm pipe ready at /dev/ac97 driver=%d (non-blocking)", g_ctx.driverPipe);
+	AC97_LOG("pcm pipe ready at /dev/audio/ac97 driver=%d (non-blocking)", g_ctx.driverPipe);
 	return true;
 }
 

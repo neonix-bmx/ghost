@@ -27,6 +27,9 @@
 #include <ghost/tasks/types.h>
 
 #define G_ETH_DRIVER_NAME "ethdriver"
+#define G_ETH_DEVICE_BASE "/dev/net/eth0"
+#define G_ETH_DEVICE_RX G_ETH_DEVICE_BASE "/rx"
+#define G_ETH_DEVICE_TX G_ETH_DEVICE_BASE "/tx"
 
 constexpr size_t G_ETH_FRAME_DATA_SIZE = 1600;
 
@@ -57,8 +60,6 @@ struct g_eth_initialize_request
 struct g_eth_initialize_response
 {
 	g_eth_status status;
-	g_fd rxPipe;
-	g_fd txPipe;
 	uint8_t mac[6];
 	uint8_t linkUp;
 } __attribute__((packed));

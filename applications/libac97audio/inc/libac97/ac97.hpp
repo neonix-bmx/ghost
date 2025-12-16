@@ -79,7 +79,7 @@ struct ac97_buffer_descriptor
 	uint16_t control;
 } __attribute__((packed));
 
-constexpr const char* AC97_DEVICE_PATH = "/dev/ac97";
+constexpr const char* AC97_DEVICE_PATH = "/dev/audio/ac97";
 
 struct g_ac97_channel
 {

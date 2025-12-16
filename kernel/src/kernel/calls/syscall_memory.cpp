@@ -190,12 +190,13 @@ void syscallShareMemory(g_task* task, g_syscall_share_mem* data)
 void syscallMapMmioArea(g_task* task, g_syscall_map_mmio* data)
 {
 	uint32_t pages = G_PAGE_ALIGN_UP(data->size) / G_PAGE_SIZE;
+	logInfo("%! map_mmio task=%i phys=%h size=%u pages=%u", "syscall", task->id, data->physicalAddress, data->size, pages);
 
 	g_virtual_address virtualRangeBase = addressRangePoolAllocate(task->process->virtualRangePool, pages,
 	                                                              G_PROC_VIRTUAL_RANGE_FLAG_WEAK);
 	if(virtualRangeBase == 0)
 	{
-		logInfo("%! task %i failed to map mmio memory, could not allocate virtual range", "syscall", task->id);
+		logInfo("%! map_mmio task=%i failed, could not allocate virtual range (pages=%u)", "syscall", task->id, pages);
 		return;
 	}
 
@@ -206,4 +207,6 @@ void syscallMapMmioArea(g_task* task, g_syscall_map_mmio* data)
 	}
 
 	data->virtualAddress = (void*) virtualRangeBase;
+	logInfo("%! map_mmio task=%i success virt=%h pages=%u", "syscall", task->id, virtualRangeBase, pages);
 }
+

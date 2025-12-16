@@ -532,33 +532,83 @@ g_fs_open_status filesystemTruncate(g_fs_node* file)
 	return delegate->truncate(file);
 }
 
-g_fs_open_status filesystemExposePipe(const char* name, g_fs_node* sourcePipe, g_bool blocking, g_fs_node** outNode)
+g_fs_open_status filesystemExposePipe(const char* path, g_fs_node* sourcePipe, g_bool blocking, g_fs_node** outNode)
 {
-	if(!devicesFolder || !sourcePipe || sourcePipe->type != G_FS_NODE_TYPE_PIPE)
+	if(!devicesFolder || !sourcePipe || sourcePipe->type != G_FS_NODE_TYPE_PIPE || !path)
 		return G_FS_OPEN_ERROR;
 
-	g_fs_node* existing = nullptr;
-	filesystemFindExistingChild(devicesFolder, name, &existing);
-	g_fs_node* target = existing;
+	const char* cursor = path;
+	g_fs_node* parent = devicesFolder;
 
-	if(!target)
+	while(true)
 	{
-		target = filesystemCreateNode(G_FS_NODE_TYPE_PIPE, name);
-		filesystemAddChild(devicesFolder, target);
-	}
-	else if(target->type != G_FS_NODE_TYPE_PIPE)
-	{
-		return G_FS_OPEN_ERROR;
-	}
+		while(*cursor == '/')
+			++cursor;
 
-	target->delegate = sourcePipe->delegate;
-	target->physicalId = sourcePipe->physicalId;
-	target->blocking = blocking;
-	target->upToDate = true;
+		if(*cursor == 0)
+			return G_FS_OPEN_ERROR;
 
-	if(outNode)
-		*outNode = target;
-	return G_FS_OPEN_SUCCESSFUL;
+		const char* start = cursor;
+		while(*cursor && *cursor != '/')
+			++cursor;
+		size_t len = cursor - start;
+		if(len == 0 || len >= G_FILENAME_MAX)
+			return G_FS_OPEN_ERROR;
+
+		char component[G_FILENAME_MAX];
+		memoryCopy(component, start, len);
+		component[len] = 0;
+
+		if((component[0] == '.' && component[1] == 0) ||
+		   (component[0] == '.' && component[1] == '.' && component[2] == 0))
+		{
+			return G_FS_OPEN_ERROR;
+		}
+
+		while(*cursor == '/')
+			++cursor;
+		bool lastComponent = (*cursor == 0);
+
+		if(!lastComponent)
+		{
+			g_fs_node* dir = nullptr;
+			filesystemFindExistingChild(parent, component, &dir);
+			if(!dir)
+			{
+				dir = filesystemCreateNode(G_FS_NODE_TYPE_FOLDER, component);
+				dir->upToDate = true;
+				filesystemAddChild(parent, dir);
+			}
+			else if(!(dir->type == G_FS_NODE_TYPE_FOLDER || dir->type == G_FS_NODE_TYPE_MOUNTPOINT))
+			{
+				return G_FS_OPEN_ERROR;
+			}
+
+			parent = dir;
+			continue;
+		}
+
+		g_fs_node* target = nullptr;
+		filesystemFindExistingChild(parent, component, &target);
+		if(!target)
+		{
+			target = filesystemCreateNode(G_FS_NODE_TYPE_PIPE, component);
+			filesystemAddChild(parent, target);
+		}
+		else if(target->type != G_FS_NODE_TYPE_PIPE)
+		{
+			return G_FS_OPEN_ERROR;
+		}
+
+		target->delegate = sourcePipe->delegate;
+		target->physicalId = sourcePipe->physicalId;
+		target->blocking = blocking;
+		target->upToDate = true;
+
+		if(outNode)
+			*outNode = target;
+		return G_FS_OPEN_SUCCESSFUL;
+	}
 }
 
 g_fs_pipe_status filesystemCreatePipe(g_bool blocking, g_fs_node** outPipeNode)

@@ -38,25 +38,22 @@ bool svgaGetPciControllerData()
 
 	g_pci_device_address address;
 	bool found = false;
+	klog("svga: scanning %i PCI devices", count);
 	for(int i = 0; i < count; i++)
 	{
 		if(devices[i].classCode == PCI_BASE_CLASS_DISPLAY &&
 		   devices[i].subclassCode == PCI_03_SUBCLASS_VGA &&
 		   devices[i].progIf == PCI_03_00_PROGIF_VGA_COMPATIBLE)
 		{
-			uint32_t vendorId;
-			if(!pciDriverReadConfig(devices[i].deviceAddress, PCI_CONFIG_OFF_VENDOR_ID, 2, &vendorId))
-			{
-				klog("Failed to read vendor ID from PCI device %x", devices[i].deviceAddress);
-				continue;
-			}
+			uint32_t vendorId = devices[i].vendorId;
+			uint32_t deviceId = devices[i].deviceId;
 
-			uint32_t deviceId;
-			if(!pciDriverReadConfig(devices[i].deviceAddress, PCI_CONFIG_OFF_DEVICE_ID, 2, &deviceId))
-			{
-				klog("Failed to read device ID from PCI device %x", devices[i].deviceAddress);
-				continue;
-			}
+			auto bus = G_PCI_DEVICE_ADDRESS_BUS(devices[i].deviceAddress);
+			auto device = G_PCI_DEVICE_ADDRESS_DEVICE(devices[i].deviceAddress);
+			auto function = G_PCI_DEVICE_ADDRESS_FUNCTION(devices[i].deviceAddress);
+			klog("svga: candidate %02x:%02x.%u vendor=%04x device=%04x class=%02x/%02x/%02x",
+			     bus, device, function, vendorId, deviceId,
+			     devices[i].classCode, devices[i].subclassCode, devices[i].progIf);
 
 			if(vendorId == 0x15AD /* VMWare */ && deviceId == 0x0405 /* SVGA2 */)
 			{
@@ -90,15 +87,22 @@ bool svgaGetPciControllerData()
 			klog("failed to read BAR2 of VMSVGA controller");
 			return false;
 		}
+
+		klog("svga: BAR0 (IO)=%h BAR1 (FB)=%h BAR2 (FIFO)=%h",
+		     device.ioBase, device.fb.physical, device.fifo.physical);
 	}
 	return found;
 }
 
 bool svgaInitializeDevice()
 {
-	if(!svgaGetPciControllerData())
+		if(!svgaGetPciControllerData())
+	{
+		klog("svga: PCI controller not found");
 		return false;
+	}
 	device.vramSize = svgaReadReg(SVGA_REG_VRAM_SIZE);
+	klog("svga: VRAM size %u bytes", device.vramSize);
 
 	if(!svgaIdentifyVersion())
 	{
@@ -108,7 +112,19 @@ bool svgaInitializeDevice()
 	klog("device version: %x", device.versionId);
 
 	device.fifo.size = svgaReadReg(SVGA_REG_MEM_SIZE);
+	// Guard against absurd MMIO addresses/sizes that would exhaust the allocator.
+	if(device.fifo.physical >= 0xE0000000)
+	{
+		klog("svga: FIFO phys too high (%h), refusing to map", device.fifo.physical);
+		return false;
+	}
+	if(device.fifo.size == 0 || device.fifo.size > 1 * 1024 * 1024)
+	{
+		klog("svga: FIFO size invalid (%u), refusing to map", device.fifo.size);
+		return false;
+	}
 	device.fifo.mapped = (uint32_t*) g_map_mmio((void*) device.fifo.physical, device.fifo.size);
+	klog("svga: FIFO mapped at %p size %u", device.fifo.mapped, device.fifo.size);
 	device.fifo.mapped[SVGA_FIFO_MIN] = SVGA_FIFO_NUM_REGS * sizeof(uint32_t);
 	device.fifo.mapped[SVGA_FIFO_MAX] = device.fifo.size;
 	device.fifo.mapped[SVGA_FIFO_NEXT_CMD] = device.fifo.mapped[SVGA_FIFO_MIN];
@@ -147,7 +163,20 @@ void svgaSetMode(uint32_t width, uint32_t height, uint32_t bpp)
 	svgaWriteReg(SVGA_REG_CONFIG_DONE, true);
 
 	device.fb.size = svgaReadReg(SVGA_REG_FB_SIZE);
+	if(device.fb.physical >= 0xE0000000)
+	{
+		klog("svga: FB phys too high (%h), refusing to map", device.fb.physical);
+		device.fb.mapped = nullptr;
+		return;
+	}
+	if(device.fb.size == 0 || device.fb.size > 128 * 1024 * 1024) // 16MB'dan 128MB'a yükseltildi
+	{
+		klog("svga: FB size invalid (%u), refusing to map", device.fb.size);
+		device.fb.mapped = nullptr;
+		return;
+	}
 	device.fb.mapped = (uint32_t*) g_map_mmio((void*) device.fb.physical, device.fb.size);
+	klog("svga: FB mapped at %p size %u", device.fb.mapped, device.fb.size);
 }
 
 uint32_t* svgaGetFb()

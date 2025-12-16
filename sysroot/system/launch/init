@@ -1,6 +1,7 @@
 print:"launching drivers"
 	driver:"/applications/ps2driver.bin"
-	driver:"/applications/vbedriver.bin"
+	driver:"/applications/vboxvgadriver.bin"
+
 
 # The headless terminal must be executed as a driver
 print:"launching headless terminal"
@@ -9,10 +10,6 @@ print:"launching headless terminal"
 print:"playing startup sound"
 	application:"/applications/startupsound.bin"
 
-# Start the visual environment
-#print:"launching window server"
-#	application:"/applications/windowserver.bin"
-#	print:"window server launched"
-#	wait:"windowserver/registration"
-#	application:"/applications/desktop.bin"
-#	application:"/applications/terminal.bin"
+/*print:"launching UI stack"
+	script:"/system/launch/launch-ui"
+*/

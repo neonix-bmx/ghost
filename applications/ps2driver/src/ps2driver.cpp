@@ -54,10 +54,20 @@ void ps2DriverInitialize()
 		klog("ps2driver: failed to open pipe for keyboard data");
 		return;
 	}
+	if(g_fs_publish_pipe(G_PS2_DEVICE_KEYBOARD_REL, keyboardRead, true) != G_FS_PUBLISH_PIPE_SUCCESS)
+	{
+		klog("ps2driver: failed to publish %s", G_PS2_DEVICE_KEYBOARD);
+		return;
+	}
 
 	if(g_pipe_b(&mouseWrite, &mouseRead, true) != G_FS_PIPE_SUCCESSFUL)
 	{
 		klog("ps2driver: failed to open pipe for mouse data");
+		return;
+	}
+	if(g_fs_publish_pipe(G_PS2_DEVICE_MOUSE_REL, mouseRead, true) != G_FS_PUBLISH_PIPE_SUCCESS)
+	{
+		klog("ps2driver: failed to publish %s", G_PS2_DEVICE_MOUSE);
 		return;
 	}
 
@@ -121,16 +131,11 @@ void ps2DriverReceiveMessages()
 void ps2HandleCommandInitialize(g_ps2_initialize_request* request, g_tid requestingTaskId,
                                 g_message_transaction requestTransaction)
 {
-	g_pid targetPid = g_get_pid_for_tid(requestingTaskId);
-	g_pid sourcePid = g_get_pid();
-
 	keyboardPartnerTask = request->keyboardPartnerTask;
 	mousePartnerTask = request->mousePartnerTask;
 
 	g_ps2_initialize_response response;
-	response.status = G_PS2_STATUS_SUCCESS;
-	response.keyboardRead = g_clone_fd(keyboardRead, sourcePid, targetPid);
-	response.mouseRead = g_clone_fd(mouseRead, sourcePid, targetPid);
+	response.status = G_PS2_INITIALIZE_SUCCESS;
 
 	g_send_message_t(requestingTaskId, &response, sizeof(g_ps2_initialize_response), requestTransaction);
 }

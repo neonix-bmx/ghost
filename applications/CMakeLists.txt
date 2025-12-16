@@ -59,9 +59,12 @@ set(APP_EXTRA_LDFLAGS_gsh         "-lterminal")
 set(APP_EXTRA_LDFLAGS_navigator   "-lproperties -linput -lfenster -lcairo -lfreetype -lpixman-1 -lpng -lz")
 set(APP_EXTRA_LDFLAGS_proc        "-lterminal")
 set(APP_EXTRA_LDFLAGS_ps2driver   "-lps2")
-set(APP_EXTRA_LDFLAGS_terminal    "-lfenster -lterminal -lps2driver -linput -lproperties -lcairo -lfreetype -lpixman-1 -lpng -lz")
+set(APP_EXTRA_LDFLAGS_terminal  "-lfenster -lterminal -lps2driver -linput -lproperties -lcairo -lfreetype -lpixman-1 -lpng -lz")
 set(APP_EXTRA_LDFLAGS_testprogram "-lps2driver -lfenster")
 set(APP_EXTRA_LDFLAGS_vmsvgadriver "-lpci -ldevice")
+set(APP_EXTRA_LDFLAGS_vboxvgadriver "-lpci -ldevice")
+set(APP_EXTRA_LDFLAGS_ghmwm "-lvideo -lps2driver -linput -lproperties -lpng -lz")
+
 
 # Artifact overrides (default is "<app>.bin")
 set(APP_ARTIFACT_testprogram "tester.bin")

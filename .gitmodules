@@ -1,3 +1,6 @@
 [submodule "applications/fenster"]
 	path = applications/fenster
 	url = https://github.com/neonix-bmx/fenster
+[submodule "applications/ghmwm"]
+	path = applications/ghmwm
+	url = https://github.com/neonix-bmx/ghmwm

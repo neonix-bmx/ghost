@@ -25,6 +25,10 @@
 #include <ghost.h>
 
 #define G_PS2_DRIVER_NAME		"ps2driver"
+#define G_PS2_DEVICE_KEYBOARD_REL	"input/kbd0"
+#define G_PS2_DEVICE_MOUSE_REL		"input/mouse0"
+#define G_PS2_DEVICE_KEYBOARD		"/dev/" G_PS2_DEVICE_KEYBOARD_REL
+#define G_PS2_DEVICE_MOUSE		"/dev/" G_PS2_DEVICE_MOUSE_REL
 
 /**
  *
@@ -63,8 +67,6 @@ struct g_ps2_initialize_request
 struct g_ps2_initialize_response
 {
     g_ps2_initialize_status status;
-    g_fd keyboardRead;
-    g_fd mouseRead;
 }__attribute__((packed));
 
 /**

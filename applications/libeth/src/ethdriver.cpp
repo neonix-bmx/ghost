@@ -48,8 +48,19 @@ bool ethDriverInitialize(g_eth_channel* outChannel, g_tid rxPartnerTask)
 	if(response->status != G_ETH_STATUS_SUCCESS)
 		return false;
 
-	outChannel->rxPipe = response->rxPipe;
-	outChannel->txPipe = response->txPipe;
+	g_fd rxFd = g_open_f(G_ETH_DEVICE_RX, G_FILE_FLAG_MODE_READ | G_FILE_FLAG_MODE_BINARY);
+	if(rxFd == G_FD_NONE)
+		return false;
+
+	g_fd txFd = g_open_f(G_ETH_DEVICE_TX, G_FILE_FLAG_MODE_WRITE | G_FILE_FLAG_MODE_BINARY);
+	if(txFd == G_FD_NONE)
+	{
+		g_close(rxFd);
+		return false;
+	}
+
+	outChannel->rxPipe = rxFd;
+	outChannel->txPipe = txFd;
 	std::memcpy(outChannel->mac, response->mac, sizeof(response->mac));
 	outChannel->linkUp = response->linkUp != 0;
 	return true;

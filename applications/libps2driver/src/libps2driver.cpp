@@ -41,8 +41,25 @@ bool ps2DriverInitialize(g_fd* keyboardReadOut, g_fd* mouseReadOut, g_tid keyboa
 	{
 		if(response->status == G_PS2_INITIALIZE_SUCCESS)
 		{
-			*keyboardReadOut = response->keyboardRead;
-			*mouseReadOut = response->mouseRead;
+			g_fd keyboardFd = g_open_f(G_PS2_DEVICE_KEYBOARD, G_FILE_FLAG_MODE_READ | G_FILE_FLAG_MODE_BINARY);
+			if(keyboardFd == G_FD_NONE)
+				return false;
+
+			g_fd mouseFd = g_open_f(G_PS2_DEVICE_MOUSE, G_FILE_FLAG_MODE_READ | G_FILE_FLAG_MODE_BINARY);
+			if(mouseFd == G_FD_NONE)
+			{
+				g_close(keyboardFd);
+				return false;
+			}
+
+			if(keyboardReadOut)
+				*keyboardReadOut = keyboardFd;
+			else
+				g_close(keyboardFd);
+			if(mouseReadOut)
+				*mouseReadOut = mouseFd;
+			else
+				g_close(mouseFd);
 			return true;
 		}
 	}

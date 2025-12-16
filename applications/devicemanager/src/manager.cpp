@@ -39,7 +39,7 @@ int main()
 	g_tid comHandler = g_create_task((void*) _deviceManagerAwaitCommands);
 	_deviceManagerCheckPciDevices();
 
-	g_spawn("/applications/ahcidriver.bin", "", "", G_SECURITY_LEVEL_DRIVER);
+	
 
 	g_join(comHandler);
 }
@@ -53,52 +53,43 @@ void _deviceManagerCheckPciDevices()
 		klog("Failed to list PCI devices");
 	}
 
-	bool foundVmsvga = false;
-	bool foundE1000 = false;
-	bool foundAc97 = false;
+bool foundVmsvga = false;
+bool foundVboxVga = false;
+bool foundBochsVbe = false;
+bool foundE1000 = false;
+bool foundAc97 = false;
+bool foundAhci = false;
 
-	for(int i = 0; i < num; i++)
+
+		for(int i = 0; i < num; i++)
 	{
-		if(devices[i].classCode == PCI_BASE_CLASS_DISPLAY &&
-		   devices[i].subclassCode == PCI_03_SUBCLASS_VGA &&
-		   devices[i].progIf == PCI_03_00_PROGIF_VGA_COMPATIBLE)
+		uint32_t vendorId = devices[i].vendorId;
+		uint32_t deviceId = devices[i].deviceId;
+
+		bool isDisplay = (devices[i].classCode == PCI_BASE_CLASS_DISPLAY &&
+		   devices[i].subclassCode == PCI_03_SUBCLASS_VGA) ||
+		   (vendorId == 0x1234 && deviceId == 0x1111) || /* QEMU std VGA (Bochs VBE) */
+		   (vendorId == 0x80EE && deviceId == 0xBEEF) || /* VirtualBox VGA */
+		   (vendorId == 0x15AD && deviceId == 0x0405);   /* VMware SVGA2 */
+
+		if(isDisplay)
 		{
-			uint32_t vendorId;
-			if(!pciDriverReadConfig(devices[i].deviceAddress, PCI_CONFIG_OFF_VENDOR_ID, 2, &vendorId))
-			{
-				klog("Failed to read vendor ID from PCI device %x", devices[i].deviceAddress);
-				continue;
-			}
-
-			uint32_t deviceId;
-			if(!pciDriverReadConfig(devices[i].deviceAddress, PCI_CONFIG_OFF_DEVICE_ID, 2, &deviceId))
-			{
-				klog("Failed to read device ID from PCI device %x", devices[i].deviceAddress);
-				continue;
-			}
-
 			if(vendorId == 0x15AD /* VMWare */ && deviceId == 0x0405 /* SVGA2 */)
 			{
 				foundVmsvga = true;
+			}
+			else if(vendorId == 0x80EE /* VirtualBox */ && deviceId == 0xBEEF /* VBox VGA */)
+			{
+				foundVboxVga = true;
+			}
+			else if(vendorId == 0x1234 /* QEMU std VGA (Bochs VBE) */ && deviceId == 0x1111)
+			{
+				foundBochsVbe = true;
 			}
 		}
 		else if(devices[i].classCode == PCI_BASE_CLASS_NETWORK &&
 		        devices[i].subclassCode == PCI_02_SUBCLASS_ETHERNET)
 		{
-			uint32_t vendorId;
-			if(!pciDriverReadConfig(devices[i].deviceAddress, PCI_CONFIG_OFF_VENDOR_ID, 2, &vendorId))
-			{
-				klog("Failed to read vendor ID from PCI device %x", devices[i].deviceAddress);
-				continue;
-			}
-
-			uint32_t deviceId;
-			if(!pciDriverReadConfig(devices[i].deviceAddress, PCI_CONFIG_OFF_DEVICE_ID, 2, &deviceId))
-			{
-				klog("Failed to read device ID from PCI device %x", devices[i].deviceAddress);
-				continue;
-			}
-
 			auto bus = G_PCI_DEVICE_ADDRESS_BUS(devices[i].deviceAddress);
 			auto device = G_PCI_DEVICE_ADDRESS_DEVICE(devices[i].deviceAddress);
 			auto function = G_PCI_DEVICE_ADDRESS_FUNCTION(devices[i].deviceAddress);
@@ -111,22 +102,12 @@ void _deviceManagerCheckPciDevices()
 				foundE1000 = true;
 			}
 		}
+
 		else if(devices[i].classCode == PCI_BASE_CLASS_MULTIMEDIA &&
 		        devices[i].subclassCode == PCI_04_SUBCLASS_MULTIMEDIA_AUDIO)
 		{
-			uint32_t vendorId;
-			if(!pciDriverReadConfig(devices[i].deviceAddress, PCI_CONFIG_OFF_VENDOR_ID, 2, &vendorId))
-			{
-				klog("Failed to read vendor ID from PCI device %x", devices[i].deviceAddress);
-				continue;
-			}
-
-			uint32_t deviceId;
-			if(!pciDriverReadConfig(devices[i].deviceAddress, PCI_CONFIG_OFF_DEVICE_ID, 2, &deviceId))
-			{
-				klog("Failed to read device ID from PCI device %x", devices[i].deviceAddress);
-				continue;
-			}
+			uint32_t vendorId = devices[i].vendorId;
+			uint32_t deviceId = devices[i].deviceId;
 
 			auto bus = G_PCI_DEVICE_ADDRESS_BUS(devices[i].deviceAddress);
 			auto device = G_PCI_DEVICE_ADDRESS_DEVICE(devices[i].deviceAddress);
@@ -135,25 +116,47 @@ void _deviceManagerCheckPciDevices()
 			     bus, device, function, vendorId, deviceId,
 			     devices[i].classCode, devices[i].subclassCode, devices[i].progIf);
 
-			if(vendorId == 0x8086 && deviceId == 0x2415)
+						if(vendorId == 0x8086 && deviceId == 0x2415)
 			{
 				foundAc97 = true;
+			}
+		}
+		else if (devices[i].classCode == 0x01 && devices[i].subclassCode == 0x06)
+		{
+			uint32_t vendorId = devices[i].vendorId;
+			uint32_t deviceId = devices[i].deviceId;
+			if (vendorId == 0x8086 && deviceId == 0x2829)
+			{
+				foundAhci = true;
 			}
 		}
 	}
 	pciDriverFreeDeviceList(devices);
 
-	// TODO Implement something more sophisticated
+		// TODO Implement something more sophisticated
 	if(foundVmsvga)
 	{
 		klog("starting VMSVGA driver");
 		g_spawn("/applications/vmsvgadriver.bin", "", "", G_SECURITY_LEVEL_DRIVER);
+	}
+		else if(foundVboxVga)
+	{
+		klog("starting VBox VGA driver");
+		g_spawn("/applications/vboxvgadriver.bin", "", "", G_SECURITY_LEVEL_DRIVER);
+	}
+	else if(foundBochsVbe)
+	{
+		// Prefer VBox driver for Bochs/QEMU std VGA as well (BGA-compatible)
+		klog("starting VBox VGA driver for Bochs/QEMU std VGA");
+		g_spawn("/applications/vboxvgadriver.bin", "", "", G_SECURITY_LEVEL_DRIVER);
 	}
 	else
 	{
 		klog("starting EFI FB driver");
 		g_spawn("/applications/efifbdriver.bin", "", "", G_SECURITY_LEVEL_DRIVER);
 	}
+
+
 
 	if(foundE1000)
 	{
@@ -165,7 +168,7 @@ void _deviceManagerCheckPciDevices()
 		klog("no supported ethernet device detected (expecting Intel 82540EM 8086:100E)");
 	}
 
-	if(foundAc97)
+		if(foundAc97)
 	{
 		klog("starting AC97 audio driver");
 		g_spawn("/applications/ac97driver.bin", "", "", G_SECURITY_LEVEL_DRIVER);
@@ -173,6 +176,12 @@ void _deviceManagerCheckPciDevices()
 	else
 	{
 		klog("no supported AC97 controller detected (expecting Intel 82801AA 8086:2415)");
+	}
+
+	if (foundAhci)
+	{
+		klog("starting AHCI driver");
+		g_spawn("/applications/ahcidriver.bin", "", "", G_SECURITY_LEVEL_DRIVER);
 	}
 }
 
@@ -195,11 +204,14 @@ void _deviceManagerAwaitCommands()
 		auto message = (g_message_header*) buf;
 		auto content = (g_device_manager_header*) G_MESSAGE_CONTENT(message);
 
-		if(content->command == G_DEVICE_MANAGER_REGISTER_DEVICE)
-		{
-			_deviceManagerHandleRegisterDevice(message->sender, message->transaction,
-			                                   (g_device_manager_register_device_request*) content);
-		}
+			if(content->command == G_DEVICE_MANAGER_REGISTER_DEVICE)
+	{
+				auto req = (g_device_manager_register_device_request*) content;
+		klog("devicemanager: received register request from task %i (type=%i handler=%i)", message->sender, req->type, req->handler);
+		_deviceManagerHandleRegisterDevice(message->sender, message->transaction, req);
+
+	}
+
 	}
 }
 
@@ -215,10 +227,11 @@ void _deviceManagerHandleRegisterDevice(g_tid sender, g_message_transaction tx,
 	devices[id] = device;
 	g_mutex_release(devicesLock);
 
-	// Respond to registerer
+		// Respond to registerer
 	g_device_manager_register_device_response response{};
 	response.status = G_DEVICE_MANAGER_SUCCESS;
 	response.id = id;
+	klog("devicemanager: registering device id=%u type=%i handler=%i", id, content->type, content->handler);
 	g_send_message_t(sender, &response, sizeof(response), tx);
 
 	// Post to topic
@@ -227,5 +240,7 @@ void _deviceManagerHandleRegisterDevice(g_tid sender, g_message_transaction tx,
 	event.id = device->id;
 	event.type = content->type;
 	event.driver = device->handler;
+	klog("devicemanager: broadcast device_registered id=%u type=%i handler=%i", event.id, event.type, event.driver);
 	g_send_topic_message(G_DEVICE_EVENT_TOPIC, &event, sizeof(event));
+
 }
