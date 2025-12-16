@@ -21,8 +21,11 @@
 #ifndef __GHOST_LIBC_SIGNAL__
 #define __GHOST_LIBC_SIGNAL__
 
+
 #include "ghost/common.h"
 #include "ghost/signal.h"
+#include "sys/types.h"
+
 
 __BEGIN_C
 

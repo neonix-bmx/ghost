@@ -40,13 +40,15 @@ void kernelLoggerPrintHeader()
 	logInfon("");
 	logInfon("");
 	logInfon("");
-	consoleVideoSetColor(0xFF4444FF);
-	logInfon("Ghost Kernel");
+		consoleVideoSetColor(0xFF4444FF);
+	logInfon("Heartix Kernel (heavy-modified Ghost)");
 	consoleVideoSetColor(0xFFFFFFFF);
 	logInfo(" Version %i.%i.%i", G_VERSION_MAJOR, G_VERSION_MINOR, G_VERSION_PATCH);
 	logInfo("  Copyright (C) 2022, Max Schl\x81ssel <lokoxe@gmail.com>");
+	logInfo("  Copyright (C) 2025, Efe Ilhan Yuce <eilhanzy@protonmail.com");
 	logInfo("");
 	logInfo("%! initializing core services", "kernel");
+
 
 	logDebug("%! setup information:", "kernel");
 	logDebug("%#   reserved: %h - %h", info->kernelImageStart, info->kernelImageEnd);

@@ -1,78 +1,36 @@
-# ABOUT GHOST
-**Ghost** is a hobbyist operating system for the x86-64 platform.
-The OS is written from scratch in C/C++ and Assembly.
+# ABOUT HEARTIX (heavy-modified Ghost)
 
-This is the main development repository.
+Heartix is a heavily modified fork of the Ghost microkernel project. It keeps the
+original Ghost architecture and copyright notices by Max Schlüssel, but rebrands
+as **Heartix** and tracks its own versioning starting at **0.1.0**.
 
-**Project website:** http://ghostkernel.org/
+## Status
+* Kernel: Heartix 0.1.0 (heavy-modified Ghost)
+* License: GPLv3 (original Ghost licensing retained)
+* Credits: Max Schlüssel (upstream Ghost); Heartix modifications by Efe Ilhan Yüce and contributors.
 
 ## Documentation
-See the `documentation` folder. It contains information about the technical design as well as detailed building instructions.
+See `documentation/` for design notes and build instructions inherited from Ghost.
 
-A usually up-to-date version of the documentation is provided here: https://ghostkernel.org/documentation/
+Outputs are placed under `target/` (bootable ISO, kernel, sysroot artifacts).
 
-## Live ISO
+## Running
+Test in a VM (VirtualBox/VMware/QEMU) with at least 512 MB RAM. Prefer VMSVGA/VMware SVGA for graphics.
 
-If you just want to play around with the latest state, you can download an ISO
-image from the [release section](https://github.com/maxdev1/ghost/releases).
+## Features (inherited, evolving)
+* x86_64 microkernel with SMP
+* ELF userland, shared libs
+* libapi + libc (Heartix-branded Ghost libs)
+* IPC: messages, pipes, shared memory
+* Drivers: VESA/VBE/VMSVGA/Bochs-VGA, PS/2, PCI, AC97, E1000 (where available)
+* Limine boot protocol compliance
 
-The suggested way to test it is in VirtualBox with at least 512MB of RAM and the
-VMSVGA graphics adapter enabled for better performance.
+## Ported/used software
+libpng, pixman, zlib, cairo, freetype, musl (libm), duktape, etc. (see `patches/ports`).
 
-## Quick-start
-
-1. On your host machine (where Docker is installed), run `./docker-build-toolchain-image.sh`. This will 
-    build an image that contains the cross-compiler and other tools required for building the operating system.
-2. Once the process has finished, it will open a bash within the container. The container has this repository folder mounted to `/ghost/source`.
-3. Build the operating system by running `./build.sh` in that directory within the container.
-
-Afterwards, the `target` folder will contain the bootable ISO image.
-
-### Bootstrapping the Ghost toolchain locally
-
-Outside the Docker workflow you can build the cross-toolchain directly on your host by running:
-
-```bash
-./bootstrap-toolchain.sh
-```
-
-The script wraps the `cmake -S cmake/ghost-toolchain-bootstrap ...` invocation, produces the toolchain/sysroot under `build-ghost/`, and prints the `-DTOOLCHAIN_BASE` and `-DSYSROOT` paths you should pass to your main CMake configure step.
-
-If your distribution ships Autoconf newer than 2.69, run `./tools/install-autoconf-269.sh` once and prepend the printed `.../autoconf-2.69/bin` to `PATH` before invoking the toolchain scripts—the Ghost toolchain currently requires Autoconf 2.69 exactly.
-
-## Features
-* x86_64-based micro-kernel
-* SMP multi-processor support
-* Comprehensive kernel interaction library (libapi)
-* Own C standard library (libc)
-* OS-specific GCC toolchain
-* ELF binary & shared library support
-* Window server & toolkit
-* Support for C++ in kernel & userland
-* Various interprocess-communication methods
-* Drivers for
-  * VESA/VBE video output
-  * PS/2 keyboard & mouse
-  * PCI handling
-* Limine protocol compliance
-* It's also very cool
-
-The OS uses the [fenster windowserver](https://github.com/maxdev1/fenster) which originated from this project:
-
-![Screenshot of 0.12.0](https://ghostkernel.org/files/ghost-0.22.2.png)
-
-## Ported software
-* libpng
-* pixman
-* zlib
-* cairo
-* freetype
-* musl (provides libm part of Ghost libc)
+## Attribution
+This codebase originates from the Ghost project by Max Schlüssel. Heartix retains the GPL and upstream notices while applying its own modifications and branding.
 
 ## Contact
-If you want to get in contact, contribute to the project or have any questions,
-feel free to contact me at:
-
-	lokoxe@gmail.com
-	
--Max Schlüssel
+Heartix mods: eilhanzy@protonmail.com
+Ghost upstream: lokoxe@gmail.com

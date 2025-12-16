@@ -4,8 +4,8 @@
 
 int kill(pid_t pid, int sig)
 {
-    // Minimal: only supports SIGKILL-like behavior; other signals unsupported
-    if(sig != SIGKILL && sig != SIGTERM)
+    // Minimal: only supports SIGTERM/SIGKILL-like behavior; other signals unsupported
+    if(sig != SIGTERM)
     {
         errno = ENOSYS;
         return -1;
