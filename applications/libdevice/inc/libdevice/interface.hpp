@@ -32,6 +32,8 @@
 typedef uint16_t g_device_type;
 #define G_DEVICE_TYPE_VIDEO		((g_device_type) 1)
 #define G_DEVICE_TYPE_BLOCK		((g_device_type) 2)
+#define G_DEVICE_TYPE_NETWORK	((g_device_type) 3)
+#define G_DEVICE_TYPE_AUDIO		((g_device_type) 4)
 
 /**
  * System wide device identifier given by the device manager on registration

@@ -49,13 +49,13 @@ int main()
 
 void ps2DriverInitialize()
 {
-	if(g_pipe_b(&keyboardWrite, &keyboardRead, false) != G_FS_PIPE_SUCCESSFUL)
+	if(g_pipe_b(&keyboardWrite, &keyboardRead, true) != G_FS_PIPE_SUCCESSFUL)
 	{
 		klog("ps2driver: failed to open pipe for keyboard data");
 		return;
 	}
 
-	if(g_pipe_b(&mouseWrite, &mouseRead, false) != G_FS_PIPE_SUCCESSFUL)
+	if(g_pipe_b(&mouseWrite, &mouseRead, true) != G_FS_PIPE_SUCCESSFUL)
 	{
 		klog("ps2driver: failed to open pipe for mouse data");
 		return;

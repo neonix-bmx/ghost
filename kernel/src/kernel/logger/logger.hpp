@@ -46,6 +46,8 @@ void loggerPrintPlain(const char *message);
 
 void loggerPrintCharacter(char c);
 
+size_t loggerReadHistory(char* target, size_t max);
+
 /**
  * Prints the given message, using the arguments from the given variable
  * argument list, formatting the values as:

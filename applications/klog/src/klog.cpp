@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,28 +18,38 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_SYSCALL_SYSTEM__
-#define __KERNEL_SYSCALL_SYSTEM__
+#include <ghost.h>
 
-#include "kernel/tasking/tasking.hpp"
-#include <ghost/system/callstructs.h>
+#include <cstdio>
+#include <cstring>
 
-void syscallLog(g_task* task, g_syscall_log* data);
+int main()
+{
+	g_fd logPipe = g_open_log_pipe();
+	if(logPipe == G_FD_NONE)
+	{
+		printf("klog: failed to open kernel log pipe\n");
+		return -1;
+	}
 
-void syscallOpenLogPipe(g_task* task, g_syscall_open_log_pipe* data);
+	printf("klog: streaming kernel log (Ctrl+C to exit)\n");
 
-void syscallSetVideoLog(g_task* task, g_syscall_set_video_log* data);
+	constexpr size_t BUFFER_SIZE = 256;
+	char buffer[BUFFER_SIZE];
 
-void syscallReadLogHistory(g_task* task, g_syscall_log_history* data);
+	while(true)
+	{
+		int32_t read = g_read(logPipe, buffer, BUFFER_SIZE);
+		if(read > 0)
+		{
+			fwrite(buffer, 1, read, stdout);
+			fflush(stdout);
+		}
+		else
+		{
+			g_sleep(50);
+		}
+	}
 
-void syscallTest(g_task* task, g_syscall_test* data);
-
-void syscallCallVm86(g_task* task, g_syscall_call_vm86* data);
-
-void syscallIrqCreateRedirect(g_task* task, g_syscall_irq_create_redirect* data);
-
-void syscallAwaitIrq(g_task* task, g_syscall_await_irq* data);
-
-void syscallGetEfiFramebuffer(g_task* task, g_syscall_get_efi_framebuffer* data);
-
-#endif
+	return 0;
+}

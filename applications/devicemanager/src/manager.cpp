@@ -54,6 +54,8 @@ void _deviceManagerCheckPciDevices()
 	}
 
 	bool foundVmsvga = false;
+	bool foundE1000 = false;
+	bool foundAc97 = false;
 
 	for(int i = 0; i < num; i++)
 	{
@@ -80,6 +82,64 @@ void _deviceManagerCheckPciDevices()
 				foundVmsvga = true;
 			}
 		}
+		else if(devices[i].classCode == PCI_BASE_CLASS_NETWORK &&
+		        devices[i].subclassCode == PCI_02_SUBCLASS_ETHERNET)
+		{
+			uint32_t vendorId;
+			if(!pciDriverReadConfig(devices[i].deviceAddress, PCI_CONFIG_OFF_VENDOR_ID, 2, &vendorId))
+			{
+				klog("Failed to read vendor ID from PCI device %x", devices[i].deviceAddress);
+				continue;
+			}
+
+			uint32_t deviceId;
+			if(!pciDriverReadConfig(devices[i].deviceAddress, PCI_CONFIG_OFF_DEVICE_ID, 2, &deviceId))
+			{
+				klog("Failed to read device ID from PCI device %x", devices[i].deviceAddress);
+				continue;
+			}
+
+			auto bus = G_PCI_DEVICE_ADDRESS_BUS(devices[i].deviceAddress);
+			auto device = G_PCI_DEVICE_ADDRESS_DEVICE(devices[i].deviceAddress);
+			auto function = G_PCI_DEVICE_ADDRESS_FUNCTION(devices[i].deviceAddress);
+			klog("network device %02x:%02x.%u vendor=%04x device=%04x class=%02x/%02x/%02x",
+			     bus, device, function, vendorId, deviceId,
+			     devices[i].classCode, devices[i].subclassCode, devices[i].progIf);
+
+			if(vendorId == 0x8086 && deviceId == 0x100E)
+			{
+				foundE1000 = true;
+			}
+		}
+		else if(devices[i].classCode == PCI_BASE_CLASS_MULTIMEDIA &&
+		        devices[i].subclassCode == PCI_04_SUBCLASS_MULTIMEDIA_AUDIO)
+		{
+			uint32_t vendorId;
+			if(!pciDriverReadConfig(devices[i].deviceAddress, PCI_CONFIG_OFF_VENDOR_ID, 2, &vendorId))
+			{
+				klog("Failed to read vendor ID from PCI device %x", devices[i].deviceAddress);
+				continue;
+			}
+
+			uint32_t deviceId;
+			if(!pciDriverReadConfig(devices[i].deviceAddress, PCI_CONFIG_OFF_DEVICE_ID, 2, &deviceId))
+			{
+				klog("Failed to read device ID from PCI device %x", devices[i].deviceAddress);
+				continue;
+			}
+
+			auto bus = G_PCI_DEVICE_ADDRESS_BUS(devices[i].deviceAddress);
+			auto device = G_PCI_DEVICE_ADDRESS_DEVICE(devices[i].deviceAddress);
+			auto function = G_PCI_DEVICE_ADDRESS_FUNCTION(devices[i].deviceAddress);
+			klog("audio device %02x:%02x.%u vendor=%04x device=%04x class=%02x/%02x/%02x",
+			     bus, device, function, vendorId, deviceId,
+			     devices[i].classCode, devices[i].subclassCode, devices[i].progIf);
+
+			if(vendorId == 0x8086 && deviceId == 0x2415)
+			{
+				foundAc97 = true;
+			}
+		}
 	}
 	pciDriverFreeDeviceList(devices);
 
@@ -93,6 +153,26 @@ void _deviceManagerCheckPciDevices()
 	{
 		klog("starting EFI FB driver");
 		g_spawn("/applications/efifbdriver.bin", "", "", G_SECURITY_LEVEL_DRIVER);
+	}
+
+	if(foundE1000)
+	{
+		klog("starting ethernet driver");
+		g_spawn("/applications/ethdriver.bin", "", "", G_SECURITY_LEVEL_DRIVER);
+	}
+	else
+	{
+		klog("no supported ethernet device detected (expecting Intel 82540EM 8086:100E)");
+	}
+
+	if(foundAc97)
+	{
+		klog("starting AC97 audio driver");
+		g_spawn("/applications/ac97driver.bin", "", "", G_SECURITY_LEVEL_DRIVER);
+	}
+	else
+	{
+		klog("no supported AC97 controller detected (expecting Intel 82801AA 8086:2415)");
 	}
 }
 

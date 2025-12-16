@@ -540,7 +540,7 @@ g_fs_pipe_status filesystemCreatePipe(g_bool blocking, g_fs_node** outPipeNode)
 
 	g_fs_node* pipeNode = filesystemCreateNode(G_FS_NODE_TYPE_PIPE, pipeName);
 	pipeNode->physicalId = pipeId;
-	pipeNode->blocking = true; // TODO Why does using the parameter freeze everything?
+	pipeNode->blocking = blocking;
 	filesystemAddChild(pipesFolder, pipeNode);
 	*outPipeNode = pipeNode;
 	return G_FS_PIPE_SUCCESSFUL;

@@ -104,11 +104,12 @@ __BEGIN_C
 #define G_SYSCALL_AWAIT_IRQ         			125
 #define G_SYSCALL_GET_EFI_FRAMEBUFFER			126
 #define G_SYSCALL_OPEN_LOG_PIPE					127
+#define G_SYSCALL_READ_LOG_HISTORY				128
 
 // Kernquery
 #define G_SYSCALL_KERNQUERY						129
 
-#define G_SYSCALL_MAX							130
+#define G_SYSCALL_MAX							131
 
 __END_C
 

@@ -69,6 +69,19 @@ void g_log(const char* message);
 g_fd g_open_log_pipe();
 
 /**
+ * Copies the buffered kernel log history into the provided buffer.
+ *
+ * @param buffer
+ * 		target buffer
+ * @param length
+ * 		number of bytes available in buffer
+ * @return number of bytes copied
+ *
+ * @security-level APPLICATION
+ */
+size_t g_read_log_history(char* buffer, size_t length);
+
+/**
  * Enables or disables logging to the video output.
  *
  * @param enabled

@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,28 +18,38 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_SYSCALL_SYSTEM__
-#define __KERNEL_SYSCALL_SYSTEM__
+#include "libac97/ac97.hpp"
 
-#include "kernel/tasking/tasking.hpp"
-#include <ghost/system/callstructs.h>
+#include <ghost.h>
 
-void syscallLog(g_task* task, g_syscall_log* data);
+bool ac97OpenChannel(g_ac97_channel* channel)
+{
+	if(!channel)
+		return false;
 
-void syscallOpenLogPipe(g_task* task, g_syscall_open_log_pipe* data);
+	g_tid driver = g_task_await_by_name(G_AC97_DRIVER_NAME);
+	if(driver == G_TID_NONE)
+		return false;
 
-void syscallSetVideoLog(g_task* task, g_syscall_set_video_log* data);
+	g_message_transaction tx = g_get_message_tx_id();
 
-void syscallReadLogHistory(g_task* task, g_syscall_log_history* data);
+	g_ac97_open_request request{};
+	request.header.command = G_AC97_COMMAND_OPEN_CHANNEL;
+	request.clientTask = g_get_tid();
 
-void syscallTest(g_task* task, g_syscall_test* data);
+	g_send_message_t(driver, &request, sizeof(request), tx);
 
-void syscallCallVm86(g_task* task, g_syscall_call_vm86* data);
+	size_t bufLen = sizeof(g_message_header) + sizeof(g_ac97_open_response);
+	uint8_t buf[bufLen];
 
-void syscallIrqCreateRedirect(g_task* task, g_syscall_irq_create_redirect* data);
+	if(g_receive_message_t(buf, bufLen, tx) != G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+		return false;
 
-void syscallAwaitIrq(g_task* task, g_syscall_await_irq* data);
+	auto response = (g_ac97_open_response*) G_MESSAGE_CONTENT(buf);
+	if(response->status != G_AC97_STATUS_SUCCESS)
+		return false;
 
-void syscallGetEfiFramebuffer(g_task* task, g_syscall_get_efi_framebuffer* data);
+	channel->pcmPipe = response->pcmPipe;
+	return true;
+}
 
-#endif

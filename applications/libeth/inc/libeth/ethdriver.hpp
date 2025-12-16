@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,28 +18,59 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_SYSCALL_SYSTEM__
-#define __KERNEL_SYSCALL_SYSTEM__
+#ifndef __LIBETH_ETHDRIVER_HPP__
+#define __LIBETH_ETHDRIVER_HPP__
 
-#include "kernel/tasking/tasking.hpp"
-#include <ghost/system/callstructs.h>
+#include <cstdint>
+#include <ghost/filesystem/types.h>
+#include <ghost/messages/types.h>
+#include <ghost/tasks/types.h>
 
-void syscallLog(g_task* task, g_syscall_log* data);
+#define G_ETH_DRIVER_NAME "ethdriver"
 
-void syscallOpenLogPipe(g_task* task, g_syscall_open_log_pipe* data);
+constexpr size_t G_ETH_FRAME_DATA_SIZE = 1600;
 
-void syscallSetVideoLog(g_task* task, g_syscall_set_video_log* data);
+typedef uint16_t g_eth_command;
+#define G_ETH_COMMAND_INITIALIZE ((g_eth_command) 0)
 
-void syscallReadLogHistory(g_task* task, g_syscall_log_history* data);
+typedef uint8_t g_eth_status;
+#define G_ETH_STATUS_SUCCESS ((g_eth_status) 0)
+#define G_ETH_STATUS_FAILURE ((g_eth_status) 1)
 
-void syscallTest(g_task* task, g_syscall_test* data);
+struct g_eth_frame
+{
+	uint16_t length;
+	uint8_t data[G_ETH_FRAME_DATA_SIZE];
+} __attribute__((packed));
 
-void syscallCallVm86(g_task* task, g_syscall_call_vm86* data);
+struct g_eth_request_header
+{
+	g_eth_command command;
+} __attribute__((packed));
 
-void syscallIrqCreateRedirect(g_task* task, g_syscall_irq_create_redirect* data);
+struct g_eth_initialize_request
+{
+	g_eth_request_header header;
+	g_tid rxPartnerTask;
+} __attribute__((packed));
 
-void syscallAwaitIrq(g_task* task, g_syscall_await_irq* data);
+struct g_eth_initialize_response
+{
+	g_eth_status status;
+	g_fd rxPipe;
+	g_fd txPipe;
+	uint8_t mac[6];
+	uint8_t linkUp;
+} __attribute__((packed));
 
-void syscallGetEfiFramebuffer(g_task* task, g_syscall_get_efi_framebuffer* data);
+struct g_eth_channel
+{
+	g_fd rxPipe;
+	g_fd txPipe;
+	uint8_t mac[6];
+	bool linkUp;
+};
+
+bool ethDriverInitialize(g_eth_channel* outChannel, g_tid rxPartnerTask = G_TID_NONE);
 
 #endif

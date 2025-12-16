@@ -38,6 +38,11 @@ g_spinlock loggerLock = 0;
 
 g_fs_node* pipeNode = nullptr;
 
+static constexpr size_t LOGGER_HISTORY_SIZE = 64 * 1024;
+static char loggerHistory[LOGGER_HISTORY_SIZE];
+static size_t loggerHistoryWrite = 0;
+static size_t loggerHistoryLength = 0;
+
 void loggerPrintLocked(const char* message, ...)
 {
 	INTERRUPTS_PAUSE;
@@ -267,9 +272,37 @@ void loggerPrintCharacter(char c)
 			pipeWrite(pipeNode->physicalId, buf, 0, 1, &wrote);
 		}
 	}
+
+	loggerHistory[loggerHistoryWrite] = c;
+	loggerHistoryWrite = (loggerHistoryWrite + 1) % LOGGER_HISTORY_SIZE;
+	if(loggerHistoryLength < LOGGER_HISTORY_SIZE)
+		loggerHistoryLength++;
 }
 
 void loggerEnablePipe(g_fs_node* node)
 {
 	pipeNode = node;
+}
+
+size_t loggerReadHistory(char* target, size_t max)
+{
+	if(max == 0 || !target)
+		return 0;
+
+	INTERRUPTS_PAUSE;
+	G_SPINLOCK_ACQUIRE(loggerLock);
+
+	size_t toCopy = loggerHistoryLength;
+	if(toCopy > max)
+		toCopy = max;
+	size_t start = (loggerHistoryWrite + LOGGER_HISTORY_SIZE - loggerHistoryLength) % LOGGER_HISTORY_SIZE;
+	for(size_t i = 0; i < toCopy; ++i)
+	{
+		target[i] = loggerHistory[(start + i) % LOGGER_HISTORY_SIZE];
+	}
+
+	G_SPINLOCK_RELEASE(loggerLock);
+	INTERRUPTS_RESUME;
+
+	return toCopy;
 }

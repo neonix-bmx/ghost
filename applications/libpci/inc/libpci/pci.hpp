@@ -90,6 +90,17 @@
 // 0x14 - 0xFE are reserved
 #define PCI_BASE_CLASS_UNDEFINED            0xFF
 
+#define PCI_02_SUBCLASS_ETHERNET            0x00
+#define PCI_02_SUBCLASS_TOKEN_RING          0x01
+#define PCI_02_SUBCLASS_FDDI                0x02
+#define PCI_02_SUBCLASS_ATM                 0x03
+#define PCI_02_SUBCLASS_ISDN                0x04
+#define PCI_02_SUBCLASS_WORLDFIP            0x05
+#define PCI_02_SUBCLASS_PICMG               0x06
+#define PCI_02_SUBCLASS_INFINIBAND          0x07
+#define PCI_02_SUBCLASS_FABRIC              0x08
+#define PCI_02_SUBCLASS_OTHER               0x80
+
 #define PCI_01_SUBCLASS_SCSI                0x00
 #define PCI_01_SUBCLASS_IDE					0x01
 #define PCI_01_SUBCLASS_FLOPPY				0x02
@@ -113,5 +124,10 @@
 
 #define PCI_03_00_PROGIF_VGA_COMPATIBLE     0x00
 #define PCI_03_00_PROGIF_8514_COMPATIBLE    0x01
+
+#define PCI_04_SUBCLASS_MULTIMEDIA_VIDEO    0x00
+#define PCI_04_SUBCLASS_MULTIMEDIA_AUDIO    0x01
+#define PCI_04_SUBCLASS_MULTIMEDIA_TELEPHONY 0x02
+#define PCI_04_SUBCLASS_MULTIMEDIA_OTHER    0x80
 
 #endif

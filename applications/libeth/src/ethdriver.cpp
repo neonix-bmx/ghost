@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,28 +18,39 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_SYSCALL_SYSTEM__
-#define __KERNEL_SYSCALL_SYSTEM__
+#include "libeth/ethdriver.hpp"
 
-#include "kernel/tasking/tasking.hpp"
-#include <ghost/system/callstructs.h>
+#include <cstring>
+#include <ghost.h>
 
-void syscallLog(g_task* task, g_syscall_log* data);
+bool ethDriverInitialize(g_eth_channel* outChannel, g_tid rxPartnerTask)
+{
+	if(!outChannel)
+		return false;
 
-void syscallOpenLogPipe(g_task* task, g_syscall_open_log_pipe* data);
+	g_tid driverTid = g_task_await_by_name(G_ETH_DRIVER_NAME);
+	if(driverTid == G_TID_NONE)
+		return false;
 
-void syscallSetVideoLog(g_task* task, g_syscall_set_video_log* data);
+	g_message_transaction transaction = g_get_message_tx_id();
 
-void syscallReadLogHistory(g_task* task, g_syscall_log_history* data);
+	g_eth_initialize_request request{};
+	request.header.command = G_ETH_COMMAND_INITIALIZE;
+	request.rxPartnerTask = rxPartnerTask;
+	g_send_message_t(driverTid, &request, sizeof(request), transaction);
 
-void syscallTest(g_task* task, g_syscall_test* data);
+	size_t bufLen = sizeof(g_message_header) + sizeof(g_eth_initialize_response);
+	uint8_t buf[bufLen];
+	if(g_receive_message_t(buf, bufLen, transaction) != G_MESSAGE_RECEIVE_STATUS_SUCCESSFUL)
+		return false;
 
-void syscallCallVm86(g_task* task, g_syscall_call_vm86* data);
+	auto response = (g_eth_initialize_response*) G_MESSAGE_CONTENT(buf);
+	if(response->status != G_ETH_STATUS_SUCCESS)
+		return false;
 
-void syscallIrqCreateRedirect(g_task* task, g_syscall_irq_create_redirect* data);
-
-void syscallAwaitIrq(g_task* task, g_syscall_await_irq* data);
-
-void syscallGetEfiFramebuffer(g_task* task, g_syscall_get_efi_framebuffer* data);
-
-#endif
+	outChannel->rxPipe = response->rxPipe;
+	outChannel->txPipe = response->txPipe;
+	std::memcpy(outChannel->mac, response->mac, sizeof(response->mac));
+	outChannel->linkUp = response->linkUp != 0;
+	return true;
+}

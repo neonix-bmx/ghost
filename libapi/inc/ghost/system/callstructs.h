@@ -68,6 +68,13 @@ typedef struct
 	g_fd fd;
 }__attribute__((packed)) g_syscall_open_log_pipe;
 
+typedef struct
+{
+	char* buffer;
+	uint32_t length;
+	uint32_t copied;
+}__attribute__((packed)) g_syscall_log_history;
+
 /**
  * @field enabled
  * 		whether or not to enable the video log

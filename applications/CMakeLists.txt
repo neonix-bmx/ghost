@@ -25,7 +25,9 @@ set(_LIB_HEADER_INSTALL_TARGETS)
 
 # Applications that should be treated as libraries (static + optional shared)
 set(APPLICATION_LIBRARY_TARGETS
+  libac97audio
   libahci
+  libeth
   libdevice
   libinput
   libpci
@@ -43,11 +45,16 @@ set(APP_EXTRA_CFLAGS_terminal  "-I${SYSROOT}/system/include/freetype2")
 
 # Extra link flags per application executable
 set(APP_EXTRA_LDFLAGS_ahcidriver  "-lpci")
+set(APP_EXTRA_LDFLAGS_ac97driver  "-lpci -ldevice -lac97audio")
 set(APP_EXTRA_LDFLAGS_calculator  "-lfenster")
 set(APP_EXTRA_LDFLAGS_desktop     "-lproperties -lfenster -lcairo -lfreetype -lpixman-1 -lpng -lz")
 set(APP_EXTRA_LDFLAGS_devicemanager "-lpci")
 set(APP_EXTRA_LDFLAGS_editor      "-lproperties -linput -lfenster -lcairo -lfreetype -lpixman-1 -lpng -lz")
 set(APP_EXTRA_LDFLAGS_efifbdriver "-ldevice")
+set(APP_EXTRA_LDFLAGS_ethdriver "-lpci -ldevice")
+set(APP_EXTRA_LDFLAGS_ipconfig    "-leth")
+set(APP_EXTRA_LDFLAGS_ping        "-leth")
+set(APP_EXTRA_LDFLAGS_startupsound "-lac97audio")
 set(APP_EXTRA_LDFLAGS_gsh         "-lterminal")
 set(APP_EXTRA_LDFLAGS_navigator   "-lproperties -linput -lfenster -lcairo -lfreetype -lpixman-1 -lpng -lz")
 set(APP_EXTRA_LDFLAGS_proc        "-lterminal")
@@ -77,7 +84,7 @@ function(get_app_metadata name out_artifact out_cflags out_ldflags)
   set(${out_ldflags}  "${_ldflags}"  PARENT_SCOPE)
 endfunction()
 
-file(GLOB children RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *)
+file(GLOB children RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS *)
 
 set(FENSTER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/fenster)
 set(_fenster_expected_header ${FENSTER_DIR}/libfenster/inc/libfenster/components/button.hpp)

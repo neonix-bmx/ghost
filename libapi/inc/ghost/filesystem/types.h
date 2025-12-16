@@ -44,7 +44,7 @@ typedef int32_t g_device; // a device id
 /**
  * Pipes
  */
-#define G_PIPE_DEFAULT_CAPACITY 0x400
+#define G_PIPE_DEFAULT_CAPACITY 0x1000
 
 /**
  * File mode flags

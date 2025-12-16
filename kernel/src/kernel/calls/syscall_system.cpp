@@ -87,6 +87,14 @@ void syscallSetVideoLog(g_task* task, g_syscall_set_video_log* data)
 	loggerEnableVideo(data->enabled);
 }
 
+void syscallReadLogHistory(g_task* task, g_syscall_log_history* data)
+{
+	(void) task;
+	if(!data)
+		return;
+	data->copied = loggerReadHistory(data->buffer, data->length);
+}
+
 void syscallTest(g_task* task, g_syscall_test* data)
 {
 	data->result = data->test;

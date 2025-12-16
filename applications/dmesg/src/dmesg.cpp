@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *  Ghost, a micro-kernel based operating system for the x86 architecture    *
- *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *  Copyright (C) 2025, Max Schlüssel <lokoxe@gmail.com>                     *
  *                                                                           *
  *  This program is free software: you can redistribute it and/or modify     *
  *  it under the terms of the GNU General Public License as published by     *
@@ -18,28 +18,30 @@
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __KERNEL_SYSCALL_SYSTEM__
-#define __KERNEL_SYSCALL_SYSTEM__
+#include <ghost.h>
 
-#include "kernel/tasking/tasking.hpp"
-#include <ghost/system/callstructs.h>
+#include <cstdio>
+#include <cstdlib>
 
-void syscallLog(g_task* task, g_syscall_log* data);
+int main()
+{
+	constexpr size_t BUFFER_SIZE = 64 * 1024;
+	auto buffer = static_cast<char*>(malloc(BUFFER_SIZE));
+	if(!buffer)
+	{
+		printf("dmesg: failed to allocate buffer\n");
+		return -1;
+	}
 
-void syscallOpenLogPipe(g_task* task, g_syscall_open_log_pipe* data);
+	size_t copied = g_read_log_history(buffer, BUFFER_SIZE);
+	if(copied == 0)
+	{
+		printf("dmesg: no log data available\n");
+		free(buffer);
+		return 0;
+	}
 
-void syscallSetVideoLog(g_task* task, g_syscall_set_video_log* data);
-
-void syscallReadLogHistory(g_task* task, g_syscall_log_history* data);
-
-void syscallTest(g_task* task, g_syscall_test* data);
-
-void syscallCallVm86(g_task* task, g_syscall_call_vm86* data);
-
-void syscallIrqCreateRedirect(g_task* task, g_syscall_irq_create_redirect* data);
-
-void syscallAwaitIrq(g_task* task, g_syscall_await_irq* data);
-
-void syscallGetEfiFramebuffer(g_task* task, g_syscall_get_efi_framebuffer* data);
-
-#endif
+	fwrite(buffer, 1, copied, stdout);
+	free(buffer);
+	return 0;
+}
