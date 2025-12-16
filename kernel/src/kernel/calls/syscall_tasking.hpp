@@ -76,4 +76,6 @@ void syscallGetTaskByName(g_task* task, g_syscall_task_get_by_name* data);
 
 void syscallDump();
 
+void syscallExecve(g_task* task, g_syscall_execve* data);
+
 #endif

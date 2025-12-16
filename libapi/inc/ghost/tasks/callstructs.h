@@ -193,6 +193,18 @@ typedef struct
 }__attribute__((packed)) g_syscall_spawn;
 
 /**
+ * Request to replace the current process image with another executable.
+ */
+typedef struct
+{
+	const char* path;
+	const char* args;
+
+	g_spawn_status status;
+	g_spawn_validation_details validationDetails;
+}__attribute__((packed)) g_syscall_execve;
+
+/**
  * @field initialEntry the initial thread entry
  * @field userEntry user-defined
  * @field userData user-defined

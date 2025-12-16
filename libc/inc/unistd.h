@@ -97,6 +97,8 @@ int rmdir(const char* path);
 int symlink(const char* path1, const char* path2);
 int chdir(const char *path);
 int fchdir(int fd);
+int execve(const char* path, char* const argv[], char* const envp[]);
+int execv(const char* path, char* const argv[]);
 
 __END_C
 

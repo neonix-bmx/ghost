@@ -260,28 +260,58 @@ void taskingMemoryDestroyPageSpace(g_physical_address directory)
 {
 	g_physical_address returnDirectory = taskingMemoryTemporarySwitchTo(directory);
 
-	// Clear mappings and free physical space above 4 MiB
-	// TODO
-	logInfo("%! taskingMemoryDestroyPageSpace not implemented", "todo");
-	// g_page_directory directoryCurrent = (g_page_directory) G_RECURSIVE_PAGE_DIRECTORY_ADDRESS;
-	// for(uint32_t ti = 1; ti < 1024; ti++)
-	// {
-	// 	if(!(directoryCurrent[ti] & G_PAGE_USER_FLAG))
-	// 		continue;
-	//
-	// 	g_page_table tableMapped = ((g_page_table) G_RECURSIVE_PAGE_DIRECTORY_AREA) + (0x400 * ti);
-	// 	for(uint32_t pi = 0; pi < 1024; pi++)
-	// 	{
-	// 		if(tableMapped[pi] == 0)
-	// 			continue;
-	//
-	// 		g_physical_address page = G_PAGE_ALIGN_DOWN(tableMapped[pi]);
-	// 		memoryPhysicalFree(page);
-	// 	}
-	//
-	// 	g_physical_address table = G_PAGE_ALIGN_DOWN(directoryCurrent[ti]);
-	// 	memoryPhysicalFree(table);
-	// }
+	auto currentSpace = (volatile uint64_t*) G_MEM_PHYS_TO_VIRT(pagingGetCurrentSpace());
+	for(size_t pml4Index = 0; pml4Index < 256; ++pml4Index)
+	{
+		uint64_t pml4Entry = currentSpace[pml4Index];
+		if(!pml4Entry)
+			continue;
+
+		auto pdpt = (volatile uint64_t*) G_MEM_PHYS_TO_VIRT(pml4Entry & ~G_PAGE_ALIGN_MASK);
+		for(size_t pdptIndex = 0; pdptIndex < 512; ++pdptIndex)
+		{
+			uint64_t pdptEntry = pdpt[pdptIndex];
+			if(!pdptEntry)
+				continue;
+
+			auto pd = (volatile uint64_t*) G_MEM_PHYS_TO_VIRT(pdptEntry & ~G_PAGE_ALIGN_MASK);
+			for(size_t pdIndex = 0; pdIndex < 512; ++pdIndex)
+			{
+				uint64_t pdEntry = pd[pdIndex];
+				if(!pdEntry)
+					continue;
+
+				if(pdEntry & G_PAGE_LARGE_PAGE_FLAG)
+				{
+					g_physical_address large = pdEntry & ~G_PAGE_ALIGN_MASK;
+					memoryPhysicalFree(large);
+				}
+				else
+				{
+					auto pt = (volatile uint64_t*) G_MEM_PHYS_TO_VIRT(pdEntry & ~G_PAGE_ALIGN_MASK);
+					for(size_t ptIndex = 0; ptIndex < 512; ++ptIndex)
+					{
+						uint64_t ptEntry = pt[ptIndex];
+						if(!ptEntry)
+							continue;
+
+						g_physical_address page = ptEntry & ~G_PAGE_ALIGN_MASK;
+						memoryPhysicalFree(page);
+					}
+
+					memoryPhysicalFree(pdEntry & ~G_PAGE_ALIGN_MASK);
+				}
+
+				pd[pdIndex] = 0;
+			}
+
+			memoryPhysicalFree(pdptEntry & ~G_PAGE_ALIGN_MASK);
+			pdpt[pdptIndex] = 0;
+		}
+
+		memoryPhysicalFree(pml4Entry & ~G_PAGE_ALIGN_MASK);
+		currentSpace[pml4Index] = 0;
+	}
 
 	taskingMemoryTemporarySwitchBack(returnDirectory);
 

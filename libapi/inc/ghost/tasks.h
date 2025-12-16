@@ -158,6 +158,19 @@ g_spawn_status g_spawn_poid(const char* path, const char* args, const char* work
                             g_spawn_validation_details* outValidationDetails);
 
 /**
+ * Replaces the current process image with the executable at the given path.
+ *
+ * @param path absolute path to executable
+ * @param argv argument vector (NULL-terminated)
+ * @param envp environment vector (currently ignored)
+ *
+ * @return one of the {g_spawn_status} codes
+ *
+ * @security-level APPLICATION
+ */
+g_spawn_status g_execve(const char* path, const char* const argv[], const char* const envp[]);
+
+/**
  * Returns and releases the command line arguments for the executing process.
  * This buffer must have a length of at least {PROCESS_COMMAND_LINE_ARGUMENTS_BUFFER_LENGTH} bytes.
  * If no arguments were supplied for the executing process, the buffer is null-terminated only.

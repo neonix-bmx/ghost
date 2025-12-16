@@ -21,6 +21,7 @@
 #include "kernel/calls/syscall_tasking.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
 #include "kernel/memory/memory.hpp"
+#include "kernel/memory/heap.hpp"
 #include "kernel/tasking/user_mutex.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/tasking/scheduler/scheduler.hpp"
@@ -131,6 +132,56 @@ void syscallSpawn(g_task* task, g_syscall_spawn* data)
 		data->status = G_SPAWN_STATUS_IO_ERROR;
 		logInfo("%! failed to find binary '%s'", "kernel", data->path);
 	}
+}
+
+void syscallExecve(g_task* task, g_syscall_execve* data)
+{
+	if(!data || !data->path)
+	{
+		if(data)
+			data->status = G_SPAWN_STATUS_TASKING_ERROR;
+		return;
+	}
+
+	const char* args = data->args ? data->args : "";
+
+	char* pathCopy = stringDuplicate(data->path);
+	if(!pathCopy)
+	{
+		data->status = G_SPAWN_STATUS_MEMORY_ERROR;
+		return;
+	}
+
+	char* argsCopy = stringDuplicate(args);
+	if(!argsCopy)
+	{
+		heapFree(pathCopy);
+		data->status = G_SPAWN_STATUS_MEMORY_ERROR;
+		return;
+	}
+
+	g_fd fd;
+	g_fs_open_status openStatus = filesystemOpen(pathCopy, G_FILE_FLAG_MODE_READ, task, &fd);
+	if(openStatus != G_FS_OPEN_SUCCESSFUL)
+	{
+		data->status = G_SPAWN_STATUS_IO_ERROR;
+		heapFree(pathCopy);
+		heapFree(argsCopy);
+		return;
+	}
+
+	g_spawn_validation_details validation = G_SPAWN_VALIDATION_SUCCESSFUL;
+	g_spawn_status status = taskExecCurrentProcess(task, fd, argsCopy, pathCopy, &validation);
+	filesystemClose(task->process->id, fd, true);
+
+	if(status != G_SPAWN_STATUS_SUCCESSFUL)
+	{
+		heapFree(pathCopy);
+		heapFree(argsCopy);
+	}
+
+	data->status = status;
+	data->validationDetails = validation;
 }
 
 void syscallTaskGetTls(g_task* task, g_syscall_task_get_tls* data)

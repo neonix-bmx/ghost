@@ -48,6 +48,16 @@ g_hashmap<g_tid, g_task*>* taskGlobalMap;
 
 void _taskingInitializeTask(g_task* task, g_process* process, g_security_level level);
 
+static void taskingFreeOnDemandMappings(g_memory_file_ondemand* mapping)
+{
+	while(mapping)
+	{
+		g_memory_file_ondemand* next = mapping->next;
+		heapFree(mapping);
+		mapping = next;
+	}
+}
+
 g_tasking_local* taskingGetLocal() { return &taskingLocal[processorGetCurrentId()]; }
 
 g_task* taskingGetCurrentTask()
@@ -550,6 +560,139 @@ void taskingSpawnEntry()
 	taskingMemoryInitializeTls(task);
 	args->entry = loadRes.entry;
 	asm volatile("int $0x82" ::: "cc", "memory");
+}
+
+g_spawn_status taskExecCurrentProcess(g_task* task, g_fd fd, char* newArgs, char* newExecPath,
+                                      g_spawn_validation_details* validation)
+{
+	g_process* process = task->process;
+
+	g_physical_address newSpace = taskingMemoryCreatePageSpace();
+	if(!newSpace)
+		return G_SPAWN_STATUS_MEMORY_ERROR;
+
+	auto newPool = (g_address_range_pool*) heapAllocate(sizeof(g_address_range_pool));
+	if(!newPool)
+	{
+		taskingMemoryDestroyPageSpace(newSpace);
+		return G_SPAWN_STATUS_MEMORY_ERROR;
+	}
+	addressRangePoolInitialize(newPool);
+	addressRangePoolAddRange(newPool, G_USER_VIRTUAL_RANGES_START, G_USER_VIRTUAL_RANGES_END);
+
+	auto oldSpace = process->pageSpace;
+	auto oldPool = process->virtualRangePool;
+	auto oldObject = process->object;
+	auto oldInfo = process->userProcessInfo;
+	auto oldImage = process->image;
+	auto oldHeap = process->heap;
+	auto oldArgs = process->environment.arguments;
+	auto oldExecPath = process->environment.executablePath;
+	auto oldTlsMaster = process->tlsMaster;
+	auto oldMappings = process->onDemandMappings;
+
+	g_stack oldStack = task->stack;
+	auto oldThreadLocal = task->threadLocal;
+	auto oldFpu = task->fpu;
+
+	process->pageSpace = newSpace;
+	process->virtualRangePool = newPool;
+	process->object = nullptr;
+	process->userProcessInfo = nullptr;
+	process->image.start = 0;
+	process->image.end = 0;
+	process->heap.brk = 0;
+	process->heap.start = 0;
+	process->heap.pages = 0;
+	process->environment.arguments = newArgs;
+	process->environment.executablePath = newExecPath;
+	process->tlsMaster.location = 0;
+	process->tlsMaster.size = 0;
+	process->tlsMaster.userThreadOffset = 0;
+	process->onDemandMappings = nullptr;
+
+	task->stack = taskingMemoryCreateStack(newPool, G_PAGE_TABLE_USER_DEFAULT,
+	                                       G_PAGE_USER_DEFAULT, G_TASKING_MEMORY_USER_STACK_PAGES);
+	if(!task->stack.start)
+	{
+		process->pageSpace = oldSpace;
+		process->virtualRangePool = oldPool;
+		process->object = oldObject;
+		process->userProcessInfo = oldInfo;
+		process->image = oldImage;
+		process->heap = oldHeap;
+		process->environment.arguments = oldArgs;
+		process->environment.executablePath = oldExecPath;
+		process->tlsMaster = oldTlsMaster;
+		process->onDemandMappings = oldMappings;
+
+		task->stack = oldStack;
+		task->threadLocal = oldThreadLocal;
+		task->fpu = oldFpu;
+
+		addressRangePoolDestroy(newPool);
+		heapFree(newPool);
+		taskingMemoryDestroyPageSpace(newSpace);
+		return G_SPAWN_STATUS_MEMORY_ERROR;
+	}
+	task->threadLocal.userThreadLocal = nullptr;
+	task->threadLocal.start = 0;
+	task->threadLocal.end = 0;
+
+	taskingMemoryInitializeUtility(task);
+	pagingSwitchToSpace(newSpace);
+
+	auto loadRes = elfLoadExecutable(fd, task->securityLevel);
+	if(validation)
+		*validation = loadRes.validationDetails;
+
+	if(loadRes.status != G_SPAWN_STATUS_SUCCESSFUL)
+	{
+		taskingMemoryDestroyUtility(task);
+		taskingMemoryDestroyStack(newPool, task->stack);
+
+		pagingSwitchToSpace(oldSpace);
+
+		process->pageSpace = oldSpace;
+		process->virtualRangePool = oldPool;
+		process->object = oldObject;
+		process->userProcessInfo = oldInfo;
+		process->image = oldImage;
+		process->heap = oldHeap;
+		process->environment.arguments = oldArgs;
+		process->environment.executablePath = oldExecPath;
+		process->tlsMaster = oldTlsMaster;
+		process->onDemandMappings = oldMappings;
+
+		task->stack = oldStack;
+		task->threadLocal = oldThreadLocal;
+		task->fpu = oldFpu;
+
+		addressRangePoolDestroy(newPool);
+		heapFree(newPool);
+		taskingMemoryDestroyPageSpace(newSpace);
+
+		return loadRes.status;
+	}
+
+	taskingMemoryInitializeTls(task);
+	taskingStateReset(task, loadRes.entry, task->securityLevel);
+
+	if(oldArgs)
+		heapFree((void*) oldArgs);
+	if(oldExecPath)
+		heapFree((void*) oldExecPath);
+	if(oldObject)
+		elfObjectDestroy(oldObject);
+	if(oldFpu.stateMem)
+		heapFree(oldFpu.stateMem);
+	taskingFreeOnDemandMappings(oldMappings);
+
+	taskingMemoryDestroyPageSpace(oldSpace);
+	addressRangePoolDestroy(oldPool);
+	heapFree(oldPool);
+
+	return G_SPAWN_STATUS_SUCCESSFUL;
 }
 
 void taskingFinalizeSpawn(g_task* task)

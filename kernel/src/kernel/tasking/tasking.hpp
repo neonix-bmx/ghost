@@ -243,6 +243,14 @@ g_spawn_result taskingSpawn(g_fd fd, g_security_level securityLevel);
 void taskingSpawnEntry();
 
 /**
+ * Replaces the current process image with the executable referenced by the given FD.
+ * The caller must pass argument and executable strings that remain valid for the
+ * lifetime of the new image.
+ */
+g_spawn_status taskExecCurrentProcess(g_task* task, g_fd fd, char* newArgs, char* newExecPath,
+                                      g_spawn_validation_details* validation);
+
+/**
  * This function is entered after the binary is loaded within the kernel thread and the task
  * should escape to userland. Finally sets the task waiting until the caller task wakes it.
  */
