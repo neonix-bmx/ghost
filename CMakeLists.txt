@@ -87,10 +87,8 @@ if(GHOST_BUILD_PORTS)
   set(PORTS_STAMP ${CMAKE_BINARY_DIR}/.ports-built)
   add_custom_command(
     OUTPUT ${PORTS_STAMP}
-    COMMAND ${CMAKE_COMMAND} -E env ${_ports_env}
-            bash -c \"bash port.sh zlib/1.2.8 && bash ${CMAKE_SOURCE_DIR}/patches/ports/fix-la.sh && bash port.sh pixman/0.38.0 && bash ${CMAKE_SOURCE_DIR}/patches/ports/fix-la.sh && bash port.sh libpng/1.6.34 && bash ${CMAKE_SOURCE_DIR}/patches/ports/fix-la.sh && bash port.sh freetype/2.5.3 && bash ${CMAKE_SOURCE_DIR}/patches/ports/fix-la.sh && bash port.sh cairo/1.12.18 && bash ${CMAKE_SOURCE_DIR}/patches/ports/fix-la.sh\"
-    COMMAND ${CMAKE_COMMAND} -E touch ${PORTS_STAMP}
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/patches/ports
+      COMMAND ${CMAKE_COMMAND} -E env ${_ports_env} bash ${CMAKE_SOURCE_DIR}/patches/ports/build-all.sh
+      COMMAND ${CMAKE_COMMAND} -E touch ${PORTS_STAMP}
     USES_TERMINAL
     COMMENT "Building ports using existing scripts (env SYSROOT, TOOLCHAIN_BASE overridden)")
   add_custom_target(ports ALL DEPENDS ${PORTS_STAMP})

@@ -31,8 +31,29 @@ g_fd keyboardWrite;
 g_fd mouseRead;
 g_fd mouseWrite;
 
+// Ring buffers to decouple producer/consumer
+static g_ps2_mouse_packet mouseBuf[512];
+static int mouseHead = 0, mouseTail = 0;
+static uint8_t keyBuf[512];
+static int keyHead = 0, keyTail = 0;
+
+// Stats counters for diagnostics
+static volatile uint64_t mouseProduced = 0;
+static volatile uint64_t mouseFlushed = 0;
+static volatile uint64_t mouseDropped = 0;
+static volatile uint64_t keyProduced = 0;
+static volatile uint64_t keyFlushed = 0;
+static volatile uint64_t keyDropped = 0;
+
+static void ps2FlushLoop();
+static void ps2StatsLoop();
+
+
+
+
 g_tid keyboardPartnerTask = G_TID_NONE;
 g_tid mousePartnerTask = G_TID_NONE;
+
 
 int main()
 {
@@ -49,43 +70,109 @@ int main()
 
 void ps2DriverInitialize()
 {
-	if(g_pipe_b(&keyboardWrite, &keyboardRead, true) != G_FS_PIPE_SUCCESSFUL)
+		// Use non-blocking pipes; background flusher handles writes
+	if(g_pipe_b(&keyboardWrite, &keyboardRead, false) != G_FS_PIPE_SUCCESSFUL)
 	{
 		klog("ps2driver: failed to open pipe for keyboard data");
 		return;
 	}
-	if(g_fs_publish_pipe(G_PS2_DEVICE_KEYBOARD_REL, keyboardRead, true) != G_FS_PUBLISH_PIPE_SUCCESS)
+	if(g_fs_publish_pipe(G_PS2_DEVICE_KEYBOARD_REL, keyboardRead, false) != G_FS_PUBLISH_PIPE_SUCCESS)
 	{
 		klog("ps2driver: failed to publish %s", G_PS2_DEVICE_KEYBOARD);
 		return;
 	}
 
-	if(g_pipe_b(&mouseWrite, &mouseRead, true) != G_FS_PIPE_SUCCESSFUL)
+	if(g_pipe_b(&mouseWrite, &mouseRead, false) != G_FS_PIPE_SUCCESSFUL)
 	{
 		klog("ps2driver: failed to open pipe for mouse data");
 		return;
 	}
-	if(g_fs_publish_pipe(G_PS2_DEVICE_MOUSE_REL, mouseRead, true) != G_FS_PUBLISH_PIPE_SUCCESS)
+	if(g_fs_publish_pipe(G_PS2_DEVICE_MOUSE_REL, mouseRead, false) != G_FS_PUBLISH_PIPE_SUCCESS)
 	{
 		klog("ps2driver: failed to publish %s", G_PS2_DEVICE_MOUSE);
 		return;
 	}
 
+
+
+		// Background flusher to drain ring buffers cooperatively
+	g_create_task((void*) ps2FlushLoop);
+	g_create_task((void*) ps2StatsLoop);
+
 	ps2Initialize(ps2MouseCallback, ps2KeyboardCallback);
 }
 
+
+
+static void flushMouse()
+{
+	while(mouseHead != mouseTail)
+	{
+			int wrote = g_write(mouseWrite, &mouseBuf[mouseTail], sizeof(g_ps2_mouse_packet));
+		if(wrote <= 0) break;
+		mouseFlushed++;
+		mouseTail = (mouseTail + 1) % (int)(sizeof(mouseBuf)/sizeof(mouseBuf[0]));
+	}
+}
+
+
+static void flushKeyboard()
+{
+	while(keyHead != keyTail)
+	{
+			int wrote = g_write(keyboardWrite, &keyBuf[keyTail], 1);
+		if(wrote <= 0) break;
+		keyFlushed++;
+		keyTail = (keyTail + 1) % (int)(sizeof(keyBuf)/sizeof(keyBuf[0]));
+	}
+}
+
+static void ps2StatsLoop()
+{
+	for(;;)
+	{
+		klog("ps2 stats: prod=%llu flushed=%llu dropped=%llu head=%d tail=%d", (unsigned long long) mouseProduced, (unsigned long long) mouseFlushed, (unsigned long long) mouseDropped, mouseHead, mouseTail);
+		mouseProduced = mouseFlushed = mouseDropped = 0;
+		klog("kbd stats: prod=%llu flushed=%llu dropped=%llu head=%d tail=%d", (unsigned long long) keyProduced, (unsigned long long) keyFlushed, (unsigned long long) keyDropped, keyHead, keyTail);
+		keyProduced = keyFlushed = keyDropped = 0;
+		g_sleep(1000);
+	}
+}
+
+
+static void ps2FlushLoop()
+{
+		for(;;)
+	{
+				flushMouse();
+		flushKeyboard();
+		g_sleep(1);
+	}
+}
+
+
+
+
 void ps2MouseCallback(int16_t x, int16_t y, uint8_t flags, int8_t scroll)
 {
-	g_ps2_mouse_packet packet;
+				g_ps2_mouse_packet packet;
 	packet.x = x;
 	packet.y = y;
 	packet.flags = flags;
 	packet.scroll = scroll;
-	g_write(mouseWrite, &packet, sizeof(g_ps2_mouse_packet));
 
-	if(mousePartnerTask != G_TID_NONE)
-		g_yield_t(mousePartnerTask);
+	int next = (mouseHead + 1) % (int)(sizeof(mouseBuf)/sizeof(mouseBuf[0]));
+	if(next == mouseTail)
+	{
+		mouseTail = (mouseTail + 1) % (int)(sizeof(mouseBuf)/sizeof(mouseBuf[0])); // drop oldest
+		mouseDropped++;
+	}
+	mouseBuf[mouseHead] = packet;
+	mouseHead = next;
+	mouseProduced++;
 }
+
+
 
 void ps2KeyboardCallback(uint8_t c)
 {
@@ -94,11 +181,19 @@ void ps2KeyboardCallback(uint8_t c)
 		g_dump();
 	}
 
-	g_write(keyboardWrite, &c, 1);
-
-	if(keyboardPartnerTask != G_TID_NONE)
-		g_yield_t(keyboardPartnerTask);
+			int next = (keyHead + 1) % (int)(sizeof(keyBuf)/sizeof(keyBuf[0]));
+	if(next == keyTail)
+	{
+		keyTail = (keyTail + 1) % (int)(sizeof(keyBuf)/sizeof(keyBuf[0])); // drop oldest
+		keyDropped++;
+	}
+	keyBuf[keyHead] = c;
+	keyHead = next;
+	keyProduced++;
 }
+
+
+
 
 void ps2DriverReceiveMessages()
 {
