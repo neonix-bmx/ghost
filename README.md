@@ -26,7 +26,7 @@ Test in a VM (VirtualBox/VMware/QEMU) with at least 512 MB RAM. Prefer VMSVGA/
 * Limine boot protocol compliance
 
 ## Ported/used software
-libpng, pixman, zlib, cairo, freetype, musl (libm), duktape, etc. (see `patches/ports`).
+libpng, pixman, zlib, cairo, freetype, ncurses, htop, musl (libm), duktape, etc. (see `patches/ports`).
 
 ## Attribution
 This codebase originates from the Ghost project by Max Schlüssel. Heartix retains the GPL and upstream notices while applying its own modifications and branding.
