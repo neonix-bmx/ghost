@@ -20,11 +20,29 @@
 
 #include "unistd.h"
 #include "errno.h"
+#include <ghost/filesystem.h>
 
-/**
- *
- */
-int rmdir(const char* path) {
-	klog("warning: rmdir(%s) is not implemented", path);
+int rmdir(const char* path)
+{
+	g_fs_rmdir_status status = g_fs_rmdir(path);
+	if(status == G_FS_RMDIR_SUCCESSFUL)
+		return 0;
+
+	switch(status)
+	{
+		case G_FS_RMDIR_NOT_FOUND:
+			errno = ENOENT;
+			break;
+		case G_FS_RMDIR_NOT_EMPTY:
+			errno = ENOTEMPTY;
+			break;
+		case G_FS_RMDIR_NOT_A_DIRECTORY:
+			errno = ENOTDIR;
+			break;
+		default:
+			errno = EIO;
+			break;
+	}
+
 	return -1;
 }

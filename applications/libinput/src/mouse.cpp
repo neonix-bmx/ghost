@@ -21,21 +21,43 @@
 #include <ghost.h>
 #include <libps2driver/ps2driver.hpp>
 
+#include <cstring>
+
 #include "libinput/mouse/mouse.hpp"
 
 g_mouse_info g_mouse::readMouse(g_fd in)
 {
 	g_ps2_mouse_packet packet;
 
-	g_mouse_info e;
-	if(g_read(in, &packet, sizeof(g_ps2_mouse_packet)) == sizeof(g_ps2_mouse_packet))
+	// Keep last-known button state, but don't replay movement/scroll when no packet arrives.
+	static g_mouse_info last{};
+	static uint8_t pending[sizeof(g_ps2_mouse_packet)];
+	static size_t pending_len = 0;
+
+	while(pending_len < sizeof(pending))
 	{
-		e.x = packet.x;
-		e.y = packet.y;
-		e.button1 = (packet.flags & (1 << 0));
-		e.button2 = (packet.flags & (1 << 1));
-		e.button3 = (packet.flags & (1 << 2));
-		e.scroll = packet.scroll;
+		g_fs_read_status status = G_FS_READ_SUCCESSFUL;
+		int32_t rd = g_read_s(in, pending + pending_len, sizeof(pending) - pending_len, &status);
+		if(rd <= 0)
+		{
+			if(status != G_FS_READ_BUSY)
+				pending_len = 0;
+			// No new packet: report no motion/scroll, keep button latch
+			last.x = 0;
+			last.y = 0;
+			last.scroll = 0;
+			return last;
+		}
+		pending_len += (size_t) rd;
 	}
-	return e;
+
+	std::memcpy(&packet, pending, sizeof(packet));
+	pending_len = 0;
+	last.x = packet.x;
+	last.y = packet.y;
+	last.scroll = packet.scroll;
+	last.button1 = (packet.flags & (1 << 0));
+	last.button2 = (packet.flags & (1 << 1));
+	last.button3 = (packet.flags & (1 << 2));
+	return last;
 }

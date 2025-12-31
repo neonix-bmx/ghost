@@ -10,7 +10,11 @@ port_install() {
 if [ -z "$PKG_CONFIG" ]; then
 	export PKG_CONFIG=$TARGET-pkg-config.sh
 fi
-	CFLAGS="-DCAIRO_NO_MUTEX=1" ../$UNPACKED_DIR/configure --host=$TARGET --prefix=$PREFIX --enable-xlib=no --enable-shared=yes --enable-static=no
+	CFLAGS="-DCAIRO_NO_MUTEX=1" ../$UNPACKED_DIR/configure --host=$TARGET --prefix=$PREFIX \
+		--enable-xlib=no --enable-shared=yes --enable-static=no \
+		--without-tests \
+		--with-default-terminfo-dir=$PREFIX/share/terminfo \
+		--with-terminfo-dirs=$PREFIX/share/terminfo
 	make -j8
 	make DESTDIR=$SYSROOT install
 }

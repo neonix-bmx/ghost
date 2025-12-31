@@ -36,24 +36,29 @@ void _stat_from_g_fs_stat(struct stat* to, g_fs_stat_data* from)
 	{
 		case G_FS_NODE_TYPE_FILE:
 			mode |= S_IFREG;
+			mode |= S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
 			break;
 		case G_FS_NODE_TYPE_FOLDER:
 		case G_FS_NODE_TYPE_MOUNTPOINT:
 		case G_FS_NODE_TYPE_ROOT:
 			mode |= S_IFDIR;
+			mode |= S_IRWXU | S_IRWXG | S_IRWXO;
 			break;
 		case G_FS_NODE_TYPE_PIPE:
 			mode |= S_IFIFO;
+			mode |= S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
 			break;
 		default:
 			break;
 	}
 	to->st_mode = mode;
 
-	// TODO
-	to->st_blksize = -1;
-	to->st_blocks = -1;
-	to->st_nlink = -1;
-	to->st_uid = -1;
-	to->st_gid = -1;
+	to->st_blksize = 4096;
+	if(from->size > 0)
+		to->st_blocks = (from->size + 511) / 512;
+	else
+		to->st_blocks = 0;
+	to->st_nlink = 1;
+	to->st_uid = 0;
+	to->st_gid = 0;
 }

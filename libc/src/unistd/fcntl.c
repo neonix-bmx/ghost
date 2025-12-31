@@ -26,26 +26,74 @@
 #include <stdarg.h>
 
 
-
-/**
- * Minimal fcntl implementation: supports F_DUPFD.
- */
-int fcntl(int fildes, int cmd, ...) {
-	if(cmd == F_DUPFD)
+static int fcntl_check_fd(int fildes)
+{
+	g_fs_stat_data st;
+	g_fs_stat_status status = g_fs_fstat(fildes, &st);
+	if(status != G_FS_STAT_SUCCESS)
 	{
-		va_list ap;
-		va_start(ap, cmd);
-		int minfd = va_arg(ap, int);
-		va_end(ap);
-		if(minfd < 0) return -1;
-		g_pid pid = g_get_pid();
-				g_fd newfd = g_clone_fd_ts(fildes, pid, minfd, pid, NULL);
-
-		return (newfd == G_FD_NONE) ? -1 : newfd;
+		errno = EBADF;
+		return -1;
 	}
-	// Unsupported commands
-	klog("warning: fcntl cmd %d not implemented", cmd);
-	return -1;
+	return 0;
 }
 
-
+/**
+ * Minimal fcntl implementation with basic fd/flag handling.
+ */
+int fcntl(int fildes, int cmd, ...) {
+	switch(cmd)
+	{
+		case F_DUPFD:
+		{
+			va_list ap;
+			va_start(ap, cmd);
+			int minfd = va_arg(ap, int);
+			va_end(ap);
+			if(minfd < 0)
+			{
+				errno = EINVAL;
+				return -1;
+			}
+			g_pid pid = g_get_pid();
+			g_fd newfd = g_clone_fd_ts(fildes, pid, minfd, pid, NULL);
+			if(newfd == G_FD_NONE)
+			{
+				errno = EBADF;
+				return -1;
+			}
+			return newfd;
+		}
+		case F_GETFD:
+			if(fcntl_check_fd(fildes) < 0)
+				return -1;
+			return 0;
+		case F_SETFD:
+		{
+			va_list ap;
+			va_start(ap, cmd);
+			(void) va_arg(ap, int);
+			va_end(ap);
+			if(fcntl_check_fd(fildes) < 0)
+				return -1;
+			return 0;
+		}
+		case F_GETFL:
+			if(fcntl_check_fd(fildes) < 0)
+				return -1;
+			return 0;
+		case F_SETFL:
+		{
+			va_list ap;
+			va_start(ap, cmd);
+			(void) va_arg(ap, int);
+			va_end(ap);
+			if(fcntl_check_fd(fildes) < 0)
+				return -1;
+			return 0;
+		}
+		default:
+			errno = ENOSYS;
+			return -1;
+	}
+}

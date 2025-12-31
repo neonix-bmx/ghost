@@ -9,6 +9,11 @@ option(GHOST_BUILD_APPS   "Build applications via legacy scripts" ON)
 option(GHOST_BUILD_PORTS  "Build ports (zlib, pixman, libpng, freetype, cairo)" ON)
 option(GHOST_ENABLE_PACK  "Enable pack target to produce ISO via scripts" ON)
 
+# Pack should always build ports; force-enable ports when packing.
+if(GHOST_ENABLE_PACK AND NOT GHOST_BUILD_PORTS)
+  set(GHOST_BUILD_PORTS ON CACHE BOOL "Build ports (zlib, pixman, libpng, freetype, cairo)" FORCE)
+endif()
+
 # Defaults similar to ghost.sh
 set(TARGET_TRIPLE "${TARGET_TRIPLE}" CACHE STRING "Target triple (e.g. x86_64-ghost)")
 if(NOT TARGET_TRIPLE)
@@ -96,6 +101,12 @@ if(GHOST_BUILD_PORTS)
     COMMAND ${CMAKE_COMMAND} -E rm -f ${PORTS_STAMP}
     COMMENT "Removing ports build stamp to allow rebuilding ports")
   add_dependencies(ports sysroot-base)
+  if(TARGET libc-install)
+    add_dependencies(ports libc-install)
+  endif()
+  if(TARGET libapi-install)
+    add_dependencies(ports libapi-install)
+  endif()
 endif()
 
 # Target utilities (limine)

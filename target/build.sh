@@ -25,6 +25,17 @@ case "$1" in
             echo "error: KERNEL_BIN is required" >&2
             exit 1
         fi
+        if [[ "${BUILD_PORTS:-1}" != "0" ]]; then
+            if [[ ! -f "${SYSROOT}/system/.ports-built" ]]; then
+                echo "building ports (missing stamp)"
+                if [[ -z "${PKG_CONFIG:-}" ]]; then
+                    PKG_CONFIG="${TOOLCHAIN_BASE}/bin/${TARGET:-x86_64-ghost}-pkg-config.sh"
+                    export PKG_CONFIG
+                fi
+                export SYSROOT TOOLCHAIN_BASE
+                bash "${ROOT}/../patches/ports/build-all.sh"
+            fi
+        fi
 
         echo "building ramdisk:"
         rm -rf "${ISO_ROOT}"

@@ -173,3 +173,33 @@ void filesystemProcessCreateStdio(g_pid sourcePid, g_fd* sourceStdio, g_pid targ
 	filesystemProcessCreateStdioPipe(sourcePid, sourceStdio[1], targetPid, 1, &targetStdio[1]);
 	filesystemProcessCreateStdioPipe(sourcePid, sourceStdio[2], targetPid, 2, &targetStdio[2]);
 }
+
+bool filesystemProcessIsNodeInUse(g_fs_virt_id nodeId)
+{
+	bool inUse = false;
+	auto procIter = hashmapIteratorStart<g_pid, g_filesystem_process*>(filesystemProcessInfo);
+	while(hashmapIteratorHasNext<g_pid, g_filesystem_process*>(&procIter))
+	{
+		auto procEntry = hashmapIteratorNext<g_pid, g_filesystem_process*>(&procIter);
+		g_filesystem_process* info = procEntry->value;
+		if(!info)
+			continue;
+
+		auto fdIter = hashmapIteratorStart<g_fd, g_file_descriptor*>(info->descriptors);
+		while(hashmapIteratorHasNext<g_fd, g_file_descriptor*>(&fdIter))
+		{
+			auto fdEntry = hashmapIteratorNext<g_fd, g_file_descriptor*>(&fdIter);
+			if(fdEntry && fdEntry->value && fdEntry->value->nodeId == nodeId)
+			{
+				inUse = true;
+				break;
+			}
+		}
+		hashmapIteratorEnd<g_fd, g_file_descriptor*>(&fdIter);
+
+		if(inUse)
+			break;
+	}
+	hashmapIteratorEnd<g_pid, g_filesystem_process*>(&procIter);
+	return inUse;
+}

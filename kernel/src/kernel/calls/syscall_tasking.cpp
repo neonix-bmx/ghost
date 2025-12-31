@@ -249,11 +249,23 @@ void syscallGetTaskEntry(g_task* task, g_syscall_get_task_entry* data)
 void syscallFork(g_task* task, g_syscall_fork* data)
 {
 	logInfo("syscall not implemented: fork");
+	data->forkedId = G_PID_NONE;
 }
 
 void syscallGetParentProcessId(g_task* task, g_syscall_get_parent_pid* data)
 {
-	logInfo("syscall not implemented: syscallGetParentProcessId");
+	g_pid pid = data->pid;
+	if(pid == 0)
+		pid = task->process->id;
+
+	auto target = taskingGetById(pid);
+	if(!target || !target->process)
+	{
+		data->parent_pid = G_PID_NONE;
+		return;
+	}
+
+	data->parent_pid = target->process->parentId;
 }
 
 void syscallGetMilliseconds(g_task* task, g_syscall_millis* data)

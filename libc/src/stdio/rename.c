@@ -21,13 +21,31 @@
 #include "stdio.h"
 #include "stdio_internal.h"
 #include "errno.h"
-#include <ghost/system.h>
+#include <ghost/filesystem.h>
 
-/**
- *
- */
-int rename(const char *old_name, const char *new_name) {
+int rename(const char* old_name, const char* new_name)
+{
+	g_fs_rename_status status = g_fs_rename(old_name, new_name);
+	if(status == G_FS_RENAME_SUCCESSFUL)
+		return 0;
 
-	// TODO
-	__G_NOT_IMPLEMENTED("rename");
+	switch(status)
+	{
+		case G_FS_RENAME_SOURCE_NOT_FOUND:
+			errno = ENOENT;
+			break;
+		case G_FS_RENAME_TARGET_EXISTS:
+			errno = EEXIST;
+			break;
+		case G_FS_RENAME_NOT_SAME_FILESYSTEM:
+			errno = EXDEV;
+			break;
+		case G_FS_RENAME_INVALID_TARGET:
+			errno = EINVAL;
+			break;
+		default:
+			errno = EIO;
+			break;
+	}
+	return -1;
 }

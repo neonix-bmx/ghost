@@ -2,15 +2,26 @@
 
 set -euo pipefail
 
-if [ ! -d "@LIMINE_DIR@" ]; then
-    echo "Downloading limine..."
-    curl -k -L "@LIMINE_SOURCE@" -o "@LIMINE_TAR@"
-    tar -xzf "@LIMINE_TAR@" -C "@LIMINE_SOURCE_DIR@"
+ensure_limine_built() {
     (
         cd "@LIMINE_DIR@"
         ./configure --enable-bios-cd --enable-uefi-cd
         make
     )
+}
+
+if [ ! -f "@LIMINE_DIR@/bin/limine-bios.sys" ] || \
+   [ ! -f "@LIMINE_DIR@/bin/limine-bios-cd.bin" ] || \
+   [ ! -f "@LIMINE_DIR@/bin/limine-uefi-cd.bin" ]; then
+    if [ ! -d "@LIMINE_DIR@" ]; then
+        echo "Downloading limine..."
+        mkdir -p "@LIMINE_SOURCE_DIR@"
+        curl -k -L "@LIMINE_SOURCE@" -o "@LIMINE_TAR@"
+        tar -xzf "@LIMINE_TAR@" -C "@LIMINE_SOURCE_DIR@"
+    else
+        echo "Limine sources already present, rebuilding…"
+    fi
+    ensure_limine_built
 else
     echo "Limine already prepared at @LIMINE_DIR@"
 fi

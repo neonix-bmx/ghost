@@ -89,4 +89,9 @@ g_fs_clonefd_status filesystemProcessCloneDescriptor(g_pid sourcePid, g_fd sourc
  */
 void filesystemProcessCreateStdio(g_pid sourcePid, g_fd* sourceStdio, g_pid targetPid, g_fd* targetStdio);
 
+/**
+ * Checks whether a node is still referenced by any process.
+ */
+bool filesystemProcessIsNodeInUse(g_fs_virt_id nodeId);
+
 #endif

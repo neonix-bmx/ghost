@@ -20,13 +20,47 @@
 
 #include "errno.h"
 #include "signal.h"
-#include "stdio.h"
+#include "signal_internal.h"
+#include "stdlib.h"
 
 /**
  *
  */
 int raise(int sig)
 {
-	errno = EINVAL;
-	return -1;
+	if(sig < 0 || sig >= SIG_COUNT)
+	{
+		errno = EINVAL;
+		return -1;
+	}
+
+	sig_handler_t handler = __signal_handlers[sig];
+	if(handler == SIG_IGN)
+		return 0;
+
+	if(handler == SIG_DFL || handler == NULL)
+	{
+		switch(sig)
+		{
+			case SIGHUP:
+			case SIGTERM:
+				exit(0);
+				break;
+			case SIGINT:
+				sig_handler_SIG_INT(sig);
+				break;
+			case SIGQUIT:
+			case SIGABRT:
+			case SIGSEGV:
+			case SIGILL:
+			case SIGFPE:
+			default:
+				abort();
+				break;
+		}
+		return 0;
+	}
+
+	handler(sig);
+	return 0;
 }

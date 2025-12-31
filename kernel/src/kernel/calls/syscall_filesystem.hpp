@@ -56,4 +56,12 @@ void syscallFsRealPath(g_task* task, g_syscall_fs_real_path* data);
 
 void syscallFsPublishPipe(g_task* task, g_syscall_fs_publish_pipe* data);
 
+void syscallFsUnlink(g_task* task, g_syscall_fs_unlink* data);
+
+void syscallFsRename(g_task* task, g_syscall_fs_rename* data);
+
+void syscallFsMkdir(g_task* task, g_syscall_fs_mkdir* data);
+
+void syscallFsRmdir(g_task* task, g_syscall_fs_rmdir* data);
+
 #endif

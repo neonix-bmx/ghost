@@ -21,6 +21,7 @@
 #include "kernel/filesystem/filesystem.hpp"
 #include "kernel/filesystem/filesystem_pipedelegate.hpp"
 #include "kernel/filesystem/filesystem_process.hpp"
+#include "kernel/filesystem/filesystem_procfsdelegate.hpp"
 #include "kernel/filesystem/filesystem_ramdiskdelegate.hpp"
 #include "kernel/system/interrupts/interrupts.hpp"
 #include "kernel/ipc/pipes.hpp"
@@ -36,6 +37,7 @@ static g_fs_node* filesystemRoot;
 static g_fs_node* mountFolder;
 static g_fs_node* pipesFolder;
 static g_fs_node* devicesFolder;
+static g_fs_node* procFolder;
 
 static g_fs_virt_id filesystemNextNodeId;
 static g_mutex filesystemNextNodeIdLock;
@@ -43,6 +45,10 @@ static g_mutex filesystemNextNodeIdLock;
 static g_hashmap<g_fs_virt_id, g_fs_node*>* filesystemNodes;
 
 g_fs_open_status _filesystemChooseOrigin(const char* path, g_task* task, g_fs_node*& origin);
+static bool filesystemSplitPath(const char* path, char* parentOut, char* nameOut);
+static bool filesystemIsInvalidName(const char* name);
+void filesystemRemoveChildEntry(g_fs_node* parent, g_fs_node* child);
+void filesystemDeleteNode(g_fs_node* node);
 
 void filesystemInitialize()
 {
@@ -68,6 +74,10 @@ void filesystemCreateRoot()
 	ramdiskDelegate->getLength = filesystemRamdiskDelegateGetLength;
 	ramdiskDelegate->close = filesystemRamdiskDelegateClose;
 	ramdiskDelegate->refreshDir = filesystemRamdiskDelegateRefreshDir;
+	ramdiskDelegate->createDirectory = filesystemRamdiskDelegateCreateDirectory;
+	ramdiskDelegate->unlink = filesystemRamdiskDelegateUnlink;
+	ramdiskDelegate->rmdir = filesystemRamdiskDelegateRmdir;
+	ramdiskDelegate->rename = filesystemRamdiskDelegateRename;
 
 	filesystemRoot = filesystemCreateNode(G_FS_NODE_TYPE_ROOT, "root");
 	filesystemRoot->delegate = ramdiskDelegate;
@@ -100,6 +110,21 @@ void filesystemCreateRoot()
 	devicesFolder = filesystemCreateNode(G_FS_NODE_TYPE_FOLDER, "dev");
 	devicesFolder->delegate = filesystemCreateDelegate();
 	filesystemAddChild(filesystemRoot, devicesFolder);
+
+	// /proc virtual filesystem
+	g_fs_delegate* procfsDelegate = filesystemCreateDelegate();
+	procfsDelegate->open = filesystemProcfsDelegateOpen;
+	procfsDelegate->discover = filesystemProcfsDelegateDiscover;
+	procfsDelegate->read = filesystemProcfsDelegateRead;
+	procfsDelegate->getLength = filesystemProcfsDelegateGetLength;
+	procfsDelegate->refreshDir = filesystemProcfsDelegateRefreshDir;
+	procfsDelegate->close = filesystemProcfsDelegateClose;
+	procfsDelegate->refreshAlways = true;
+
+	procFolder = filesystemCreateNode(G_FS_NODE_TYPE_FOLDER, "proc");
+	procFolder->delegate = procfsDelegate;
+	procFolder->physicalId = filesystemProcfsRootId();
+	filesystemAddChild(filesystemRoot, procFolder);
 }
 
 g_fs_node* filesystemCreateNode(g_fs_node_type type, const char* name)
@@ -523,6 +548,15 @@ g_fs_open_status filesystemCreateFile(g_fs_node* parent, const char* name, g_fs_
 	return delegate->create(parent, name, outFile);
 }
 
+g_fs_mkdir_status filesystemCreateDirectory(g_fs_node* parent, const char* name, g_fs_node** outDir)
+{
+	g_fs_delegate* delegate = filesystemFindDelegate(parent);
+	if(!delegate->createDirectory)
+		return G_FS_MKDIR_ERROR;
+
+	return delegate->createDirectory(parent, name, outDir);
+}
+
 g_fs_open_status filesystemTruncate(g_fs_node* file)
 {
 	g_fs_delegate* delegate = filesystemFindDelegate(file);
@@ -783,15 +817,14 @@ g_fs_open_directory_status filesystemOpenDirectory(g_fs_node* dir)
 	     G_FS_NODE_TYPE_ROOT))
 		return G_FS_OPEN_DIRECTORY_ERROR;
 
-	if(dir->upToDate)
-		return G_FS_OPEN_DIRECTORY_SUCCESSFUL;
-
 	g_fs_delegate* delegate = filesystemFindDelegate(dir);
 	if(!delegate->refreshDir)
 	{
 		logDebug("%! failed to open directory %i, delegate had no implementation", "fs", dir->id);
 		return G_FS_OPEN_DIRECTORY_SUCCESSFUL;
 	}
+	if(dir->upToDate && !delegate->refreshAlways)
+		return G_FS_OPEN_DIRECTORY_SUCCESSFUL;
 
 	auto refreshStatus = delegate->refreshDir(dir);
 	if(refreshStatus == G_FS_DIRECTORY_REFRESH_SUCCESSFUL)
@@ -854,6 +887,194 @@ bool filesystemReadToMemory(g_fd fd, size_t offset, uint8_t* buffer, uint64_t le
 		remain -= read;
 	}
 	return true;
+}
+
+g_fs_mkdir_status filesystemMkdir(g_task* task, const char* path)
+{
+	if(!path || !*path)
+		return G_FS_MKDIR_ERROR;
+
+	char parentPath[G_PATH_MAX];
+	char name[G_FILENAME_MAX];
+	if(!filesystemSplitPath(path, parentPath, name) || filesystemIsInvalidName(name))
+		return G_FS_MKDIR_ERROR;
+
+	g_fs_node* origin = nullptr;
+	if(_filesystemChooseOrigin(path, task, origin) != G_FS_OPEN_SUCCESSFUL)
+		return G_FS_MKDIR_ERROR;
+
+	auto findRes = filesystemFind(origin, path);
+	if(findRes.status == G_FS_OPEN_SUCCESSFUL)
+		return G_FS_MKDIR_ALREADY_EXISTS;
+	if(findRes.status != G_FS_OPEN_NOT_FOUND)
+		return G_FS_MKDIR_ERROR;
+
+	auto parentRes = filesystemFind(origin, parentPath);
+	if(parentRes.status == G_FS_OPEN_NOT_FOUND)
+		return G_FS_MKDIR_NO_PARENT;
+	if(parentRes.status != G_FS_OPEN_SUCCESSFUL)
+		return G_FS_MKDIR_ERROR;
+
+	g_fs_node* parent = parentRes.node;
+	if(!(parent->type == G_FS_NODE_TYPE_FOLDER || parent->type == G_FS_NODE_TYPE_MOUNTPOINT ||
+	     parent->type == G_FS_NODE_TYPE_ROOT))
+		return G_FS_MKDIR_NOT_A_DIRECTORY;
+
+	if(filesystemOpenDirectory(parent) != G_FS_OPEN_DIRECTORY_SUCCESSFUL)
+		return G_FS_MKDIR_ERROR;
+
+	if(filesystemFindExistingChild(parent, name))
+		return G_FS_MKDIR_ALREADY_EXISTS;
+
+	g_fs_node* created = nullptr;
+	return filesystemCreateDirectory(parent, name, &created);
+}
+
+g_fs_unlink_status filesystemUnlink(g_task* task, const char* path)
+{
+	if(!path || !*path)
+		return G_FS_UNLINK_ERROR;
+
+	g_fs_node* origin = nullptr;
+	if(_filesystemChooseOrigin(path, task, origin) != G_FS_OPEN_SUCCESSFUL)
+		return G_FS_UNLINK_ERROR;
+
+	auto findRes = filesystemFind(origin, path);
+	if(findRes.status == G_FS_OPEN_NOT_FOUND)
+		return G_FS_UNLINK_NOT_FOUND;
+	if(findRes.status != G_FS_OPEN_SUCCESSFUL)
+		return G_FS_UNLINK_ERROR;
+
+	g_fs_node* node = findRes.node;
+	if(node->type == G_FS_NODE_TYPE_FOLDER || node->type == G_FS_NODE_TYPE_MOUNTPOINT ||
+	   node->type == G_FS_NODE_TYPE_ROOT)
+		return G_FS_UNLINK_IS_DIRECTORY;
+
+	if(filesystemProcessIsNodeInUse(node->id))
+		return G_FS_UNLINK_BUSY;
+
+	g_fs_delegate* delegate = filesystemFindDelegate(node);
+	if(!delegate->unlink)
+		return G_FS_UNLINK_ERROR;
+
+	auto status = delegate->unlink(node);
+	if(status != G_FS_UNLINK_SUCCESSFUL)
+		return status;
+
+	filesystemRemoveChildEntry(node->parent, node);
+	filesystemDeleteNode(node);
+	return status;
+}
+
+g_fs_rmdir_status filesystemRmdir(g_task* task, const char* path)
+{
+	if(!path || !*path)
+		return G_FS_RMDIR_ERROR;
+
+	g_fs_node* origin = nullptr;
+	if(_filesystemChooseOrigin(path, task, origin) != G_FS_OPEN_SUCCESSFUL)
+		return G_FS_RMDIR_ERROR;
+
+	auto findRes = filesystemFind(origin, path);
+	if(findRes.status == G_FS_OPEN_NOT_FOUND)
+		return G_FS_RMDIR_NOT_FOUND;
+	if(findRes.status != G_FS_OPEN_SUCCESSFUL)
+		return G_FS_RMDIR_ERROR;
+
+	g_fs_node* node = findRes.node;
+	if(node->type != G_FS_NODE_TYPE_FOLDER)
+		return G_FS_RMDIR_NOT_A_DIRECTORY;
+
+	if(filesystemOpenDirectory(node) != G_FS_OPEN_DIRECTORY_SUCCESSFUL)
+		return G_FS_RMDIR_ERROR;
+
+	if(node->children)
+		return G_FS_RMDIR_NOT_EMPTY;
+
+	g_fs_delegate* delegate = filesystemFindDelegate(node);
+	if(!delegate->rmdir)
+		return G_FS_RMDIR_ERROR;
+
+	auto status = delegate->rmdir(node);
+	if(status != G_FS_RMDIR_SUCCESSFUL)
+		return status;
+
+	filesystemRemoveChildEntry(node->parent, node);
+	filesystemDeleteNode(node);
+	return status;
+}
+
+g_fs_rename_status filesystemRename(g_task* task, const char* source, const char* target)
+{
+	if(!source || !*source || !target || !*target)
+		return G_FS_RENAME_ERROR;
+
+	g_fs_node* sourceOrigin = nullptr;
+	if(_filesystemChooseOrigin(source, task, sourceOrigin) != G_FS_OPEN_SUCCESSFUL)
+		return G_FS_RENAME_ERROR;
+
+	auto sourceRes = filesystemFind(sourceOrigin, source);
+	if(sourceRes.status == G_FS_OPEN_NOT_FOUND)
+		return G_FS_RENAME_SOURCE_NOT_FOUND;
+	if(sourceRes.status != G_FS_OPEN_SUCCESSFUL)
+		return G_FS_RENAME_ERROR;
+
+	g_fs_node* node = sourceRes.node;
+	if(node->type == G_FS_NODE_TYPE_ROOT || node->type == G_FS_NODE_TYPE_MOUNTPOINT)
+		return G_FS_RENAME_ERROR;
+
+	char targetParentPath[G_PATH_MAX];
+	char targetName[G_FILENAME_MAX];
+	if(!filesystemSplitPath(target, targetParentPath, targetName) || filesystemIsInvalidName(targetName))
+		return G_FS_RENAME_INVALID_TARGET;
+
+	g_fs_node* targetOrigin = nullptr;
+	if(_filesystemChooseOrigin(target, task, targetOrigin) != G_FS_OPEN_SUCCESSFUL)
+		return G_FS_RENAME_INVALID_TARGET;
+
+	auto targetParentRes = filesystemFind(targetOrigin, targetParentPath);
+	if(targetParentRes.status == G_FS_OPEN_NOT_FOUND)
+		return G_FS_RENAME_INVALID_TARGET;
+	if(targetParentRes.status != G_FS_OPEN_SUCCESSFUL)
+		return G_FS_RENAME_ERROR;
+
+	g_fs_node* targetParent = targetParentRes.node;
+	if(!(targetParent->type == G_FS_NODE_TYPE_FOLDER || targetParent->type == G_FS_NODE_TYPE_MOUNTPOINT ||
+	     targetParent->type == G_FS_NODE_TYPE_ROOT))
+		return G_FS_RENAME_INVALID_TARGET;
+
+	auto targetRes = filesystemFind(targetOrigin, target);
+	if(targetRes.status == G_FS_OPEN_SUCCESSFUL)
+	{
+		if(targetRes.node == node)
+			return G_FS_RENAME_SUCCESSFUL;
+		return G_FS_RENAME_TARGET_EXISTS;
+	}
+	if(targetRes.status != G_FS_OPEN_NOT_FOUND)
+		return G_FS_RENAME_ERROR;
+
+	g_fs_delegate* sourceDelegate = filesystemFindDelegate(node);
+	g_fs_delegate* targetDelegate = filesystemFindDelegate(targetParent);
+	if(sourceDelegate != targetDelegate)
+		return G_FS_RENAME_NOT_SAME_FILESYSTEM;
+
+	if(node->parent == targetParent && stringEquals(node->name, targetName))
+		return G_FS_RENAME_SUCCESSFUL;
+
+	if(!sourceDelegate->rename)
+		return G_FS_RENAME_ERROR;
+
+	auto status = sourceDelegate->rename(node, targetParent, targetName);
+	if(status != G_FS_RENAME_SUCCESSFUL)
+		return status;
+
+	filesystemRemoveChildEntry(node->parent, node);
+	if(node->name)
+		heapFree(node->name);
+	node->name = stringDuplicate(targetName);
+	filesystemAddChild(targetParent, node);
+
+	return G_FS_RENAME_SUCCESSFUL;
 }
 
 
@@ -961,4 +1182,96 @@ g_fs_stat_status filesystemStatNode(g_fs_node* node, g_fs_stat_data* out)
 	out->time_creation = 0;
 
 	return G_FS_STAT_SUCCESS;
+}
+
+static bool filesystemSplitPath(const char* path, char* parentOut, char* nameOut)
+{
+	int pathLen = stringLength(path);
+	if(pathLen == 0)
+		return false;
+
+	int end = pathLen - 1;
+	while(end > 0 && path[end] == '/')
+		--end;
+
+	if(end == 0 && path[0] == '/')
+		return false;
+
+	int slashPos = end;
+	while(slashPos >= 0 && path[slashPos] != '/')
+		--slashPos;
+
+	int nameLen = end - slashPos;
+	if(nameLen <= 0 || nameLen > G_FILENAME_MAX)
+		return false;
+
+	memoryCopy(nameOut, &path[slashPos + 1], nameLen);
+	nameOut[nameLen] = 0;
+
+	if(slashPos < 0)
+	{
+		parentOut[0] = '.';
+		parentOut[1] = 0;
+	}
+	else if(slashPos == 0)
+	{
+		parentOut[0] = '/';
+		parentOut[1] = 0;
+	}
+	else
+	{
+		memoryCopy(parentOut, path, slashPos);
+		parentOut[slashPos] = 0;
+	}
+
+	return true;
+}
+
+static bool filesystemIsInvalidName(const char* name)
+{
+	if(!name || !*name)
+		return true;
+
+	if(stringEquals(name, ".") || stringEquals(name, ".."))
+		return true;
+
+	return false;
+}
+
+void filesystemRemoveChildEntry(g_fs_node* parent, g_fs_node* child)
+{
+	if(!parent || !child)
+		return;
+
+	mutexAcquire(&parent->lock);
+	g_fs_node_entry* entry = parent->children;
+	g_fs_node_entry* previous = nullptr;
+	while(entry)
+	{
+		if(entry->node == child)
+		{
+			if(previous)
+				previous->next = entry->next;
+			else
+				parent->children = entry->next;
+			break;
+		}
+		previous = entry;
+		entry = entry->next;
+	}
+	mutexRelease(&parent->lock);
+
+	if(entry)
+		heapFree(entry);
+}
+
+void filesystemDeleteNode(g_fs_node* node)
+{
+	if(!node)
+		return;
+
+	hashmapRemove(filesystemNodes, node->id);
+	if(node->name)
+		heapFree(node->name);
+	heapFree(node);
 }

@@ -106,4 +106,19 @@ g_ramdisk_entry* ramdiskGetRoot();
  */
 g_ramdisk_entry* ramdiskCreateFile(g_ramdisk_entry* parent, const char* filename);
 
+/**
+ * Creates a new directory node on the ramdisk.
+ */
+g_ramdisk_entry* ramdiskCreateDirectory(g_ramdisk_entry* parent, const char* dirname);
+
+/**
+ * Removes an entry from the ramdisk.
+ */
+bool ramdiskRemoveEntry(g_ramdisk_entry* entry);
+
+/**
+ * Renames or moves an entry on the ramdisk.
+ */
+bool ramdiskRenameEntry(g_ramdisk_entry* entry, g_ramdisk_entry* newParent, const char* newName);
+
 #endif

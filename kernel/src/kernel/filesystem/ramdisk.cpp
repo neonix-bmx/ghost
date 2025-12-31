@@ -262,3 +262,79 @@ g_ramdisk_entry* ramdiskCreateFile(g_ramdisk_entry* parent, const char* filename
 
 	return entry;
 }
+
+g_ramdisk_entry* ramdiskCreateDirectory(g_ramdisk_entry* parent, const char* dirname)
+{
+	g_ramdisk_entry* entry = (g_ramdisk_entry*) heapAllocate(sizeof(g_ramdisk_entry));
+	entry->next = ramdiskMain->firstEntry;
+	ramdiskMain->firstEntry = entry;
+
+	int namelen = stringLength(dirname);
+	entry->name = (char*) heapAllocate(sizeof(char) * (namelen + 1));
+	stringCopy(entry->name, dirname);
+
+	entry->type = G_RAMDISK_ENTRY_TYPE_FOLDER;
+	entry->id = ramdiskMain->nextUnusedId++;
+	entry->parentid = parent->id;
+
+	entry->data = nullptr;
+	entry->dataSize = 0;
+	entry->dataOnRamdisk = false;
+	entry->notOnRdBufferLength = 0;
+
+	return entry;
+}
+
+bool ramdiskRemoveEntry(g_ramdisk_entry* entry)
+{
+	if(!entry || entry == ramdiskMain->root)
+		return false;
+
+	if(entry->type == G_RAMDISK_ENTRY_TYPE_FOLDER && ramdiskGetChildCount(entry->id) > 0)
+		return false;
+
+	g_ramdisk_entry* current = ramdiskMain->firstEntry;
+	g_ramdisk_entry* previous = nullptr;
+	while(current)
+	{
+		if(current == entry)
+		{
+			if(previous)
+				previous->next = current->next;
+			else
+				ramdiskMain->firstEntry = current->next;
+			break;
+		}
+		previous = current;
+		current = current->next;
+	}
+
+	if(!current)
+		return false;
+
+	if(!entry->dataOnRamdisk && entry->data)
+		heapFree(entry->data);
+	if(entry->name)
+		heapFree(entry->name);
+	heapFree(entry);
+	return true;
+}
+
+bool ramdiskRenameEntry(g_ramdisk_entry* entry, g_ramdisk_entry* newParent, const char* newName)
+{
+	if(!entry || !newParent || !newName || !*newName || entry == ramdiskMain->root)
+		return false;
+
+	if(ramdiskFindChild(newParent, newName))
+		return false;
+
+	int nameLen = stringLength(newName);
+	char* renamed = (char*) heapAllocate(sizeof(char) * (nameLen + 1));
+	stringCopy(renamed, newName);
+
+	if(entry->name)
+		heapFree(entry->name);
+	entry->name = renamed;
+	entry->parentid = newParent->id;
+	return true;
+}

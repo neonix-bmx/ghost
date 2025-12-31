@@ -19,11 +19,28 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "unistd.h"
-#include <ghost/system.h>
+#include "errno.h"
+#include <ghost/filesystem.h>
 
-/**
- *
- */
-int access(const char *pathname, int mode) {
-	__G_NOT_IMPLEMENTED(access);
+int access(const char* pathname, int mode)
+{
+	(void) mode;
+
+	if(!pathname)
+	{
+		errno = EINVAL;
+		return -1;
+	}
+
+	g_fs_stat_data stat;
+	g_fs_stat_status status = g_fs_stat(pathname, &stat);
+	if(status == G_FS_STAT_SUCCESS)
+		return 0;
+
+	if(status == G_FS_STAT_NOT_FOUND)
+		errno = ENOENT;
+	else
+		errno = EIO;
+
+	return -1;
 }

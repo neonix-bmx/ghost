@@ -256,6 +256,56 @@ g_fs_create_node_status g_fs_create_node(uint32_t parent, char* name, g_fs_node_
                                          uint32_t* out_created_id);
 
 /**
+ * Removes a file.
+ *
+ * @param path
+ * 		path to unlink
+ *
+ * @return one of the {g_fs_unlink_status} codes
+ *
+ * @security-level APPLICATION
+ */
+g_fs_unlink_status g_fs_unlink(const char* path);
+
+/**
+ * Renames or moves a path.
+ *
+ * @param source
+ * 		source path
+ * @param target
+ * 		target path
+ *
+ * @return one of the {g_fs_rename_status} codes
+ *
+ * @security-level APPLICATION
+ */
+g_fs_rename_status g_fs_rename(const char* source, const char* target);
+
+/**
+ * Creates a directory.
+ *
+ * @param path
+ * 		path to create
+ *
+ * @return one of the {g_fs_mkdir_status} codes
+ *
+ * @security-level APPLICATION
+ */
+g_fs_mkdir_status g_fs_mkdir(const char* path);
+
+/**
+ * Removes a directory.
+ *
+ * @param path
+ * 		path to remove
+ *
+ * @return one of the {g_fs_rmdir_status} codes
+ *
+ * @security-level APPLICATION
+ */
+g_fs_rmdir_status g_fs_rmdir(const char* path);
+
+/**
  * Publishes a pipe descriptor under /dev so that other tasks can open it like a
  * character device.
  *

@@ -46,7 +46,6 @@ static volatile uint64_t keyFlushed = 0;
 static volatile uint64_t keyDropped = 0;
 
 static void ps2FlushLoop();
-static void ps2StatsLoop();
 
 
 
@@ -95,9 +94,8 @@ void ps2DriverInitialize()
 
 
 
-		// Background flusher to drain ring buffers cooperatively
+	// Background flusher to drain ring buffers cooperatively
 	g_create_task((void*) ps2FlushLoop);
-	g_create_task((void*) ps2StatsLoop);
 
 	ps2Initialize(ps2MouseCallback, ps2KeyboardCallback);
 }
@@ -126,19 +124,6 @@ static void flushKeyboard()
 		keyTail = (keyTail + 1) % (int)(sizeof(keyBuf)/sizeof(keyBuf[0]));
 	}
 }
-
-static void ps2StatsLoop()
-{
-	for(;;)
-	{
-		klog("ps2 stats: prod=%llu flushed=%llu dropped=%llu head=%d tail=%d", (unsigned long long) mouseProduced, (unsigned long long) mouseFlushed, (unsigned long long) mouseDropped, mouseHead, mouseTail);
-		mouseProduced = mouseFlushed = mouseDropped = 0;
-		klog("kbd stats: prod=%llu flushed=%llu dropped=%llu head=%d tail=%d", (unsigned long long) keyProduced, (unsigned long long) keyFlushed, (unsigned long long) keyDropped, keyHead, keyTail);
-		keyProduced = keyFlushed = keyDropped = 0;
-		g_sleep(1000);
-	}
-}
-
 
 static void ps2FlushLoop()
 {

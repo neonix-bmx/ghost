@@ -19,14 +19,34 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "sys/stat.h"
-#include "stdint.h"
+#include "errno.h"
 #include <ghost/filesystem.h>
 
 /**
  *
  */
-int mkdir(const char *path, mode_t mode) {
+int mkdir(const char* path, mode_t mode)
+{
+	(void) mode;
 
-	klog("warning: mkdir(%s, %i) is not implemented", path, mode);
+	g_fs_mkdir_status status = g_fs_mkdir(path);
+	if(status == G_FS_MKDIR_SUCCESSFUL)
+		return 0;
+
+	switch(status)
+	{
+		case G_FS_MKDIR_ALREADY_EXISTS:
+			errno = EEXIST;
+			break;
+		case G_FS_MKDIR_NO_PARENT:
+			errno = ENOENT;
+			break;
+		case G_FS_MKDIR_NOT_A_DIRECTORY:
+			errno = ENOTDIR;
+			break;
+		default:
+			errno = EIO;
+			break;
+	}
 	return -1;
 }

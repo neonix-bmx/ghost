@@ -36,24 +36,34 @@ typedef uint32_t mode_t;
 #define O_CREAT 			G_FILE_FLAG_MODE_CREATE
 #define O_TRUNC				G_FILE_FLAG_MODE_TRUNCATE
 #define O_EXCL				G_FILE_FLAG_MODE_EXCLUSIVE
+#define O_NONBLOCK			0x00000800
+#define O_CLOEXEC			0x00080000
 
 #define	O_RDONLY			G_FILE_FLAG_MODE_READ
 #define O_WRONLY 			G_FILE_FLAG_MODE_WRITE
 #define O_RDWR				(G_FILE_FLAG_MODE_READ | G_FILE_FLAG_MODE_WRITE)
 
 // commands & flags for fcntl()
-// TODO
-#define	F_DUPFD				0//G_FILE_CONTROL_DUPLICATE_DESCRIPTOR
-#define F_GETFD				0//G_FILE_CONTROL_GET_DESCRIPTOR_FLAGS
-#define F_SETFD				0//G_FILE_CONTROL_SET_DESCRIPTOR_FLAGS
-#define F_SETFL				0//G_FILE_CONTROL_SET_STATUS_FLAGS
-#define F_GETLK				0//G_FILE_CONTROL_GET_REC_LOCK_INFO
-#define F_SETLK				0//G_FILE_CONTROL_SET_REC_LOCK_INFO
-#define F_SETLKW			0//G_FILE_CONTROL_SET_REC_LOCK_INFO_WAIT
+#define	F_DUPFD				0
+#define F_GETFD				1
+#define F_SETFD				2
+#define F_GETFL				3
+#define F_SETFL				4
+#define F_GETLK				5
+#define F_SETLK				6
+#define F_SETLKW			7
 // #define F_GETOWN
 // #define F_SETOWN
 
-#define FD_CLOEXEC			0//G_FILE_CONTROL_FLAG_CLOSE_ON_EXEC
+#define FD_CLOEXEC			1
+
+#ifndef AT_FDCWD
+#define AT_FDCWD			(-100)
+#endif
+
+#ifndef AT_SYMLINK_NOFOLLOW
+#define AT_SYMLINK_NOFOLLOW 0x0100
+#endif
 
 // POSIX
 int open(const char* pathname, int flags, ...);

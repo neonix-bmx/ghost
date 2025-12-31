@@ -112,6 +112,56 @@ typedef int g_fs_create_node_status;
 #define G_FS_CREATE_NODE_STATUS_FAILED_NO_PARENT ((g_fs_create_node_status) 2)
 
 /**
+ * Status codes for removing nodes (internal use)
+ */
+typedef int g_fs_remove_status;
+#define G_FS_REMOVE_SUCCESSFUL ((g_fs_remove_status) 0)
+#define G_FS_REMOVE_NOT_FOUND ((g_fs_remove_status) 1)
+#define G_FS_REMOVE_NOT_EMPTY ((g_fs_remove_status) 2)
+#define G_FS_REMOVE_ERROR ((g_fs_remove_status) 3)
+
+/**
+ * Status codes for unlinking a file
+ */
+typedef int g_fs_unlink_status;
+#define G_FS_UNLINK_SUCCESSFUL ((g_fs_unlink_status) 0)
+#define G_FS_UNLINK_NOT_FOUND ((g_fs_unlink_status) 1)
+#define G_FS_UNLINK_IS_DIRECTORY ((g_fs_unlink_status) 2)
+#define G_FS_UNLINK_ERROR ((g_fs_unlink_status) 3)
+#define G_FS_UNLINK_BUSY ((g_fs_unlink_status) 4)
+
+/**
+ * Status codes for removing a directory
+ */
+typedef int g_fs_rmdir_status;
+#define G_FS_RMDIR_SUCCESSFUL ((g_fs_rmdir_status) 0)
+#define G_FS_RMDIR_NOT_FOUND ((g_fs_rmdir_status) 1)
+#define G_FS_RMDIR_NOT_EMPTY ((g_fs_rmdir_status) 2)
+#define G_FS_RMDIR_NOT_A_DIRECTORY ((g_fs_rmdir_status) 3)
+#define G_FS_RMDIR_ERROR ((g_fs_rmdir_status) 4)
+
+/**
+ * Status codes for creating a directory
+ */
+typedef int g_fs_mkdir_status;
+#define G_FS_MKDIR_SUCCESSFUL ((g_fs_mkdir_status) 0)
+#define G_FS_MKDIR_ALREADY_EXISTS ((g_fs_mkdir_status) 1)
+#define G_FS_MKDIR_NO_PARENT ((g_fs_mkdir_status) 2)
+#define G_FS_MKDIR_NOT_A_DIRECTORY ((g_fs_mkdir_status) 3)
+#define G_FS_MKDIR_ERROR ((g_fs_mkdir_status) 4)
+
+/**
+ * Status codes for renaming a path
+ */
+typedef int g_fs_rename_status;
+#define G_FS_RENAME_SUCCESSFUL ((g_fs_rename_status) 0)
+#define G_FS_RENAME_SOURCE_NOT_FOUND ((g_fs_rename_status) 1)
+#define G_FS_RENAME_TARGET_EXISTS ((g_fs_rename_status) 2)
+#define G_FS_RENAME_NOT_SAME_FILESYSTEM ((g_fs_rename_status) 3)
+#define G_FS_RENAME_INVALID_TARGET ((g_fs_rename_status) 4)
+#define G_FS_RENAME_ERROR ((g_fs_rename_status) 5)
+
+/**
  * Status codes for exposing an existing pipe as a device node.
  */
 typedef int g_fs_publish_pipe_status;

@@ -20,13 +20,24 @@
 
 #include "stdint.h"
 #include "sys/time.h"
-#include <ghost/system.h>
+#include "errno.h"
+#include <ghost/tasks.h>
 
 /**
  *
  */
 int gettimeofday(struct timeval* tp, void* tzp)
 {
-	__G_NOT_IMPLEMENTED_WARN(gettimeofday)
+	(void) tzp;
+
+	if(!tp)
+	{
+		errno = EINVAL;
+		return -1;
+	}
+
+	uint64_t millis = g_millis();
+	tp->tv_sec = millis / 1000;
+	tp->tv_usec = (millis % 1000) * 1000;
 	return 0;
 }

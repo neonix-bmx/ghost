@@ -4,12 +4,21 @@
 
 int kill(pid_t pid, int sig)
 {
-    // Minimal: only supports SIGTERM/SIGKILL-like behavior; other signals unsupported
+    if(sig < 0 || sig >= SIG_COUNT)
+    {
+        errno = EINVAL;
+        return -1;
+    }
+
+    if(pid == g_get_pid())
+        return raise(sig);
+
     if(sig != SIGTERM)
     {
         errno = ENOSYS;
         return -1;
     }
+
     g_kill_status st = g_kill(pid);
     if(st != G_KILL_STATUS_SUCCESSFUL)
     {

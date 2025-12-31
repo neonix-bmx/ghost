@@ -68,6 +68,7 @@ struct g_bitmap_page_allocator
 {
     g_mutex lock;
     uint32_t freePageCount;
+    uint32_t totalPageCount;
     g_bitmap_index_page_header* indexPage;
 
     struct

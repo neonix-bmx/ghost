@@ -1,0 +1,45 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                                           *
+ *  Ghost, a micro-kernel based operating system for the x86 architecture    *
+ *  Copyright (C) 2015, Max Schlüssel <lokoxe@gmail.com>                     *
+ *                                                                           *
+ *  This program is free software: you can redistribute it and/or modify     *
+ *  it under the terms of the GNU General Public License as published by     *
+ *  the Free Software Foundation, either version 3 of the License, or        *
+ *  (at your option) any later version.                                      *
+ *                                                                           *
+ *  This program is distributed in the hope that it will be useful,          *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of           *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            *
+ *  GNU General Public License for more details.                             *
+ *                                                                           *
+ *  You should have received a copy of the GNU General Public License        *
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.    *
+ *                                                                           *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+#include "unistd.h"
+#include "stdlib.h"
+#include "string.h"
+
+#define G_GETLOGIN_BUFSZ 64
+
+char* getlogin(void) {
+	static char buffer[G_GETLOGIN_BUFSZ];
+	const char* name = getenv("LOGNAME");
+
+	if(name == 0 || *name == '\0') {
+		name = getenv("USER");
+	}
+	if(name == 0 || *name == '\0') {
+		name = "root";
+	}
+
+	size_t len = strlen(name);
+	if(len >= G_GETLOGIN_BUFSZ) {
+		len = G_GETLOGIN_BUFSZ - 1;
+	}
+	memcpy(buffer, name, len);
+	buffer[len] = '\0';
+	return buffer;
+}

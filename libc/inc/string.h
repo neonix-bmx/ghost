@@ -79,6 +79,7 @@ size_t strspn(const char* str_a, const char* str_b);
 char* strpbrk(const char* str_a, const char* str_b);
 char* strstr(const char* str_a, const char* str_b);
 char* strtok(char* dest, const char* src);
+char* strtok_r(char* str, const char* delim, char** saveptr);
 
 size_t strlen(const char* str);
 

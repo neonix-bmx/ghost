@@ -96,6 +96,10 @@ __BEGIN_C
 #define G_SYSCALL_FS_CLOSE_DIRECTORY			96
 #define G_SYSCALL_FS_REAL_PATH					97
 #define G_SYSCALL_FS_PUBLISH_PIPE				98
+#define G_SYSCALL_FS_UNLINK						99
+#define G_SYSCALL_FS_RENAME						100
+#define G_SYSCALL_FS_MKDIR						101
+#define G_SYSCALL_FS_RMDIR						102
 
 // System
 #define G_SYSCALL_CALL_VM86						120

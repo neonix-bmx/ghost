@@ -239,3 +239,23 @@ void syscallFsPublishPipe(g_task* task, g_syscall_fs_publish_pipe* data)
 
 	data->status = G_FS_PUBLISH_PIPE_SUCCESS;
 }
+
+void syscallFsUnlink(g_task* task, g_syscall_fs_unlink* data)
+{
+	data->status = filesystemUnlink(task, data->path);
+}
+
+void syscallFsRename(g_task* task, g_syscall_fs_rename* data)
+{
+	data->status = filesystemRename(task, data->source, data->target);
+}
+
+void syscallFsMkdir(g_task* task, g_syscall_fs_mkdir* data)
+{
+	data->status = filesystemMkdir(task, data->path);
+}
+
+void syscallFsRmdir(g_task* task, g_syscall_fs_rmdir* data)
+{
+	data->status = filesystemRmdir(task, data->path);
+}

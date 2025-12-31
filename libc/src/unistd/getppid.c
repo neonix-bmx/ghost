@@ -19,11 +19,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "unistd.h"
+#include <ghost/tasks.h>
 
 /**
  *
  */
 pid_t getppid() {
-	return g_get_pid();
+	return (pid_t) g_get_parent_pid(g_get_pid());
 }
 

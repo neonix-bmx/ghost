@@ -347,6 +347,7 @@ g_process* taskingCreateProcess(g_security_level securityLevel)
 {
 	auto process = (g_process*) heapAllocateClear(sizeof(g_process));
 	process->id = taskingGetNextId();
+	process->parentId = G_PID_NONE;
 
 	mutexInitializeGlobal(&process->lock, __func__);
 
@@ -514,6 +515,7 @@ g_spawn_result taskingSpawn(g_fd fd, g_security_level securityLevel)
 	res.process->spawnArgs->parent = parent->id;
 	res.process->spawnArgs->fd = targetFd;
 	res.process->spawnArgs->securityLevel = securityLevel;
+	res.process->parentId = parent->process->id;
 
 	// Set kernel-level entry
 	taskingStateReset(child, (g_address) &taskingSpawnEntry, G_SECURITY_LEVEL_KERNEL);

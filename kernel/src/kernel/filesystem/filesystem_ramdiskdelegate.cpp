@@ -192,3 +192,75 @@ g_fs_directory_refresh_status filesystemRamdiskDelegateRefreshDir(g_fs_node* dir
 
 	return G_FS_DIRECTORY_REFRESH_SUCCESSFUL;
 }
+
+g_fs_mkdir_status filesystemRamdiskDelegateCreateDirectory(g_fs_node* parent, const char* name, g_fs_node** outDir)
+{
+	g_ramdisk_entry* entry = ramdiskFindById(parent->physicalId);
+	if(!entry)
+		return G_FS_MKDIR_ERROR;
+
+	if(ramdiskFindChild(entry, name))
+		return G_FS_MKDIR_ALREADY_EXISTS;
+
+	g_ramdisk_entry* newDir = ramdiskCreateDirectory(entry, name);
+	if(!newDir)
+		return G_FS_MKDIR_ERROR;
+
+	g_fs_node* newNode = filesystemCreateNode(G_FS_NODE_TYPE_FOLDER, name);
+	newNode->physicalId = newDir->id;
+	filesystemAddChild(parent, newNode);
+	if(outDir)
+		*outDir = newNode;
+
+	return G_FS_MKDIR_SUCCESSFUL;
+}
+
+g_fs_unlink_status filesystemRamdiskDelegateUnlink(g_fs_node* node)
+{
+	g_ramdisk_entry* entry = ramdiskFindById(node->physicalId);
+	if(!entry)
+		return G_FS_UNLINK_ERROR;
+
+	if(entry->type == G_RAMDISK_ENTRY_TYPE_FOLDER)
+		return G_FS_UNLINK_IS_DIRECTORY;
+
+	if(!ramdiskRemoveEntry(entry))
+		return G_FS_UNLINK_ERROR;
+
+	return G_FS_UNLINK_SUCCESSFUL;
+}
+
+g_fs_rmdir_status filesystemRamdiskDelegateRmdir(g_fs_node* node)
+{
+	g_ramdisk_entry* entry = ramdiskFindById(node->physicalId);
+	if(!entry)
+		return G_FS_RMDIR_ERROR;
+
+	if(entry->type != G_RAMDISK_ENTRY_TYPE_FOLDER)
+		return G_FS_RMDIR_NOT_A_DIRECTORY;
+
+	if(ramdiskGetChildCount(entry->id) > 0)
+		return G_FS_RMDIR_NOT_EMPTY;
+
+	if(!ramdiskRemoveEntry(entry))
+		return G_FS_RMDIR_ERROR;
+
+	return G_FS_RMDIR_SUCCESSFUL;
+}
+
+g_fs_rename_status filesystemRamdiskDelegateRename(g_fs_node* node, g_fs_node* newParent, const char* newName)
+{
+	g_ramdisk_entry* entry = ramdiskFindById(node->physicalId);
+	g_ramdisk_entry* parentEntry = ramdiskFindById(newParent->physicalId);
+	if(!entry || !parentEntry)
+		return G_FS_RENAME_ERROR;
+
+	if(!ramdiskRenameEntry(entry, parentEntry, newName))
+	{
+		if(ramdiskFindChild(parentEntry, newName))
+			return G_FS_RENAME_TARGET_EXISTS;
+		return G_FS_RENAME_ERROR;
+	}
+
+	return G_FS_RENAME_SUCCESSFUL;
+}

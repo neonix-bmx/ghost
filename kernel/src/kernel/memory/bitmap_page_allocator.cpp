@@ -35,6 +35,7 @@ void bitmapPageAllocatorInitialize(g_bitmap_page_allocator* allocator, limine_me
 {
 	mutexInitializeGlobal(&allocator->lock);
 	allocator->freePageCount = 0;
+	allocator->totalPageCount = 0;
 
 	// Allocate top-level index page that keeps pointers to bitmaps
 	g_physical_address indexPagePhys = _bitmapPageAllocatorEarlyAllocate(memoryMap, 1);
@@ -63,6 +64,7 @@ void bitmapPageAllocatorInitialize(g_bitmap_page_allocator* allocator, limine_me
 			size_t bitmapBit = entryIndex % G_BITMAP_BITS_PER_ENTRY;
 			bitmap->entries[bitmapIndex] |= (1 << bitmapBit);
 			allocator->freePageCount++;
+			allocator->totalPageCount++;
 
 			// Go to next page
 			currentPage += G_PAGE_SIZE;

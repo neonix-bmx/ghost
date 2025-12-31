@@ -33,7 +33,6 @@ set(TOOLCHAIN_SH ${REPO_ROOT}/toolchain.sh)
 set(AUTOCONF_PREFIX ${REPO_ROOT}/build-deps/autoconf-2.69)
 set(AUTOCONF_269_BIN ${AUTOCONF_PREFIX}/bin)
 set(AUTOCONF_BIN ${AUTOCONF_269_BIN}/autoconf)
-set(_toolchain_path "$ENV{PATH}") # will be prepended once autoconf is installed
 
 set(AUTOCONF_SCRIPT ${REPO_ROOT}/tools/install-autoconf-269.sh)
 if(NOT EXISTS ${AUTOCONF_SCRIPT})
@@ -50,12 +49,15 @@ add_custom_command(
 add_custom_target(autoconf-269 DEPENDS ${AUTOCONF_BIN})
 
 set(_toolchain_path "${AUTOCONF_269_BIN}:$ENV{PATH}")
+string(REPLACE "(" "\\(" _toolchain_path "${_toolchain_path}") # avoid /bin/sh syntax errors from WSL PATH entries
+string(REPLACE ")" "\\)" _toolchain_path "${_toolchain_path}")
 add_custom_target(ghost-toolchain
   COMMAND ${CMAKE_COMMAND} -E env
-          TARGET=${TARGET_TRIPLE}
-          TOOLCHAIN_BASE=${TOOLCHAIN_BASE}
-          SYSROOT=${SYSROOT}
-          PATH=${_toolchain_path}
+          # Quote env values so shells don't choke on characters like parentheses from the host PATH
+          "TARGET=${TARGET_TRIPLE}"
+          "TOOLCHAIN_BASE=${TOOLCHAIN_BASE}"
+          "SYSROOT=${SYSROOT}"
+          "PATH=${_toolchain_path}"
           bash ${TOOLCHAIN_SH}
   WORKING_DIRECTORY ${REPO_ROOT}
   USES_TERMINAL

@@ -65,6 +65,7 @@ struct g_fs_node_entry
 struct g_fs_delegate
 {
     g_mutex lock;
+    bool refreshAlways;
 
     g_fs_open_status (*open)(g_fs_node* node, g_file_flag_mode flags);
     g_fs_open_status (*discover)(g_fs_node* parent, const char* name, g_fs_node** outNode);
@@ -75,6 +76,10 @@ struct g_fs_delegate
     g_fs_open_status (*truncate)(g_fs_node* file);
     g_fs_close_status (*close)(g_fs_node* node, g_file_flag_mode openFlags);
     g_fs_directory_refresh_status (*refreshDir)(g_fs_node* node);
+    g_fs_mkdir_status (*createDirectory)(g_fs_node* parent, const char* name, g_fs_node** outDir);
+    g_fs_unlink_status (*unlink)(g_fs_node* node);
+    g_fs_rmdir_status (*rmdir)(g_fs_node* node);
+    g_fs_rename_status (*rename)(g_fs_node* node, g_fs_node* newParent, const char* newName);
 
     void (*waitForRead)(g_tid task, g_fs_node* node);
     void (*waitForWrite)(g_tid task, g_fs_node* node);
@@ -165,6 +170,16 @@ g_fs_node* filesystemGetDevicesFolder();
 g_fs_delegate* filesystemFindDelegate(g_fs_node* node);
 
 /**
+ * Removes a child entry from a parent without delegating to filesystem handlers.
+ */
+void filesystemRemoveChildEntry(g_fs_node* parent, g_fs_node* child);
+
+/**
+ * Deletes a node without delegating to filesystem handlers.
+ */
+void filesystemDeleteNode(g_fs_node* node);
+
+/**
  * Opens a file, creating a file descriptor.
  */
 g_fs_open_status filesystemOpen(const char* path, g_file_flag_mode flags, g_task* task, g_fd* outFd);
@@ -208,9 +223,34 @@ g_fs_length_status filesystemGetLength(g_task* task, g_fd fd, uint64_t* outLengt
 g_fs_open_status filesystemCreateFile(g_fs_node* parent, const char* name, g_fs_node** outFile);
 
 /**
+ * Creates a directory.
+ */
+g_fs_mkdir_status filesystemCreateDirectory(g_fs_node* parent, const char* name, g_fs_node** outDir);
+
+/**
  * Truncates a file.
  */
 g_fs_open_status filesystemTruncate(g_fs_node* file);
+
+/**
+ * Creates a directory at a path.
+ */
+g_fs_mkdir_status filesystemMkdir(g_task* task, const char* path);
+
+/**
+ * Unlinks a file.
+ */
+g_fs_unlink_status filesystemUnlink(g_task* task, const char* path);
+
+/**
+ * Removes a directory.
+ */
+g_fs_rmdir_status filesystemRmdir(g_task* task, const char* path);
+
+/**
+ * Renames a node.
+ */
+g_fs_rename_status filesystemRename(g_task* task, const char* source, const char* target);
 
 /**
  * Creates or updates an alias for a pipe node under /dev.

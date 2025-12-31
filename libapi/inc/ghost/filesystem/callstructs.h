@@ -438,4 +438,68 @@ typedef struct
     g_fs_real_path_status status;
 } __attribute__((packed)) g_syscall_fs_real_path;
 
+/**
+ * @field path
+ * 		path to unlink
+ *
+ * @field status
+ * 		one of the {g_fs_unlink_status} codes
+ *
+ * @security-level APPLICATION
+ */
+typedef struct
+{
+    const char* path;
+    g_fs_unlink_status status;
+}__attribute__((packed)) g_syscall_fs_unlink;
+
+/**
+ * @field source
+ * 		source path
+ *
+ * @field target
+ * 		target path
+ *
+ * @field status
+ * 		one of the {g_fs_rename_status} codes
+ *
+ * @security-level APPLICATION
+ */
+typedef struct
+{
+    const char* source;
+    const char* target;
+    g_fs_rename_status status;
+}__attribute__((packed)) g_syscall_fs_rename;
+
+/**
+ * @field path
+ * 		path to create
+ *
+ * @field status
+ * 		one of the {g_fs_mkdir_status} codes
+ *
+ * @security-level APPLICATION
+ */
+typedef struct
+{
+    const char* path;
+    g_fs_mkdir_status status;
+}__attribute__((packed)) g_syscall_fs_mkdir;
+
+/**
+ * @field path
+ * 		path to remove
+ *
+ * @field status
+ * 		one of the {g_fs_rmdir_status} codes
+ *
+ * @security-level APPLICATION
+ */
+typedef struct
+{
+    const char* path;
+    g_fs_rmdir_status status;
+}__attribute__((packed)) g_syscall_fs_rmdir;
+
 #endif

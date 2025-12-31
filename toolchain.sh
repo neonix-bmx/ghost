@@ -234,11 +234,11 @@ if [ $STEP_BUILD_BINUTILS == 1 ]; then
 	failOnError
 
 	echo "    Building"
-	make all -j8						>>ghost-build.log 2>&1
+	make MAKEINFO=true all -j8						>>ghost-build.log 2>&1
 	failOnError
 
 	echo "    Installing"
-	make install						>>ghost-build.log 2>&1
+	make MAKEINFO=true install						>>ghost-build.log 2>&1
 	failOnError
 
 	popd

@@ -8,9 +8,15 @@ ports=(
   "pixman/0.38.0"
   "libpng/1.6.34"
   "freetype/2.5.3"
+  "ncurses/6.4"
+  "htop/3.2.2"
 )
 
 for p in "${ports[@]}"; do
   echo "==> building $p"
   bash port.sh "$p"
 done
+
+if [ -n "${SYSROOT:-}" ]; then
+  touch "${SYSROOT}/system/.ports-built"
+fi

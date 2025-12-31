@@ -31,6 +31,7 @@ __BEGIN_C
 
 // (N1548-7.14-2)
 typedef __SIG_ATOMIC_TYPE__ sig_atomic_t;
+typedef unsigned int sigset_t;
 
 // type of signal handler functions
 typedef void (*sig_handler_t)(int);
@@ -42,6 +43,22 @@ void sig_handler_SIG_IGN(int);
 #define SIG_IGN		sig_handler_SIG_IGN	 	// ignore handler
 #define SIG_DFL		0						// default action
 #define SIG_ERR		-1						// error return value
+
+struct sigaction {
+	sig_handler_t sa_handler;
+	sigset_t sa_mask;
+	int sa_flags;
+};
+
+#define SA_RESETHAND 0x00000001
+#define SA_NODEFER  0x00000002
+
+int sigemptyset(sigset_t* set);
+int sigaddset(sigset_t* set, int sig);
+int sigdelset(sigset_t* set, int sig);
+int sigismember(const sigset_t* set, int sig);
+int sigaction(int sig, const struct sigaction* act, struct sigaction* oldact);
+char* strsignal(int sig);
 
 /**
  * Defines a given signal handler for the signal <sig>. (N1548-7.14.1.1)

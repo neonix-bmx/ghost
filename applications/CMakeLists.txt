@@ -6,6 +6,8 @@ cmake_minimum_required(VERSION 3.20)
 
 # Option: build shared variants of application libraries (default OFF to avoid host CRT issues)
 option(GHOST_APPLIBS_SHARED "Build shared variants of application libraries" OFF)
+# Option: build fenster UI stack and GUI apps (defaults OFF to keep ghmwm standalone)
+option(GHOST_ENABLE_FENSTER "Build fenster UI stack (window server + GUI apps)" OFF)
 
 # Collect all library include directories to be available for apps during build
 file(GLOB _all_inc_dirs RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} */inc)
@@ -56,6 +58,7 @@ set(APP_EXTRA_LDFLAGS_ipconfig    "-leth")
 set(APP_EXTRA_LDFLAGS_ping        "-leth")
 set(APP_EXTRA_LDFLAGS_startupsound "-lac97audio")
 set(APP_EXTRA_LDFLAGS_gsh         "-lterminal")
+set(APP_EXTRA_LDFLAGS_ghsh        "-lps2driver -linput -lterminal -lproperties -lvideo")
 set(APP_EXTRA_LDFLAGS_navigator   "-lproperties -linput -lfenster -lcairo -lfreetype -lpixman-1 -lpng -lz")
 set(APP_EXTRA_LDFLAGS_proc        "-lterminal")
 set(APP_EXTRA_LDFLAGS_ps2driver   "-lps2")
@@ -64,6 +67,16 @@ set(APP_EXTRA_LDFLAGS_testprogram "-lps2driver -lfenster")
 set(APP_EXTRA_LDFLAGS_vmsvgadriver "-lpci -ldevice")
 set(APP_EXTRA_LDFLAGS_vboxvgadriver "-lpci -ldevice")
 set(APP_EXTRA_LDFLAGS_ghmwm "-lvideo -lps2driver -linput -lproperties -lpng -lz")
+
+set(FENSTER_DEPENDENT_APPS
+  fenster
+  calculator
+  desktop
+  editor
+  navigator
+  terminal
+  testprogram
+  vmsvgadriver)
 
 
 # Artifact overrides (default is "<app>.bin")
@@ -89,53 +102,55 @@ endfunction()
 
 file(GLOB children RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS *)
 
-set(FENSTER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/fenster)
-set(_fenster_expected_header ${FENSTER_DIR}/libfenster/inc/libfenster/components/button.hpp)
-if(NOT EXISTS ${_fenster_expected_header})
-  find_package(Git QUIET)
-  if(GIT_FOUND)
-    execute_process(
-      COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive applications/fenster
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      RESULT_VARIABLE _fenster_submodule_result
-      OUTPUT_QUIET ERROR_QUIET
-    )
-    if(NOT _fenster_submodule_result EQUAL 0)
-      message(WARNING "fenster submodule missing and automatic initialization failed (error ${_fenster_submodule_result}); GUI apps may not build")
+if(GHOST_ENABLE_FENSTER)
+  set(FENSTER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/fenster)
+  set(_fenster_expected_header ${FENSTER_DIR}/libfenster/inc/libfenster/components/button.hpp)
+  if(NOT EXISTS ${_fenster_expected_header})
+    find_package(Git QUIET)
+    if(GIT_FOUND)
+      execute_process(
+        COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive applications/fenster
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        RESULT_VARIABLE _fenster_submodule_result
+        OUTPUT_QUIET ERROR_QUIET
+      )
+      if(NOT _fenster_submodule_result EQUAL 0)
+        message(WARNING "fenster submodule missing and automatic initialization failed (error ${_fenster_submodule_result}); GUI apps may not build")
+      endif()
+    else()
+      message(WARNING "fenster submodule missing and Git is not available; GUI apps may not build")
     endif()
-  else()
-    message(WARNING "fenster submodule missing and Git is not available; GUI apps may not build")
   endif()
-endif()
 
-if(EXISTS ${FENSTER_DIR}/Makefile)
-  if(IS_DIRECTORY ${FENSTER_DIR}/libfenster/inc)
-    list(APPEND APPLICATIONS_ALL_INC_DIRS ${FENSTER_DIR}/libfenster/inc)
-  endif()
-  if(IS_DIRECTORY ${FENSTER_DIR}/libproperties/inc)
-    list(APPEND APPLICATIONS_ALL_INC_DIRS ${FENSTER_DIR}/libproperties/inc)
-  endif()
-  set(_fenster_env
-    "target=ghost"
-    "SYSROOT=${SYSROOT}"
-    "CXX=${CMAKE_CXX_COMPILER}"
-    "AR=${CMAKE_AR}"
-    "CXXFLAGS=--sysroot=${SYSROOT} -I${SYSROOT}/system/include/freetype2"
-    "LDFLAGS=--sysroot=${SYSROOT} -L${SYSROOT}/system/lib -Wl,-rpath-link,${SYSROOT}/system/lib"
-  )
-  add_custom_target(fenster ALL
-    COMMAND ${CMAKE_COMMAND} -E env ${_fenster_env} make
-    WORKING_DIRECTORY ${FENSTER_DIR}
-    USES_TERMINAL
-    COMMENT "Building fenster (libproperties/libfenster/server)")
-  add_custom_target(fenster-install-headers
-    COMMAND ${CMAKE_COMMAND} -E env ${_fenster_env} make install-headers
-    WORKING_DIRECTORY ${FENSTER_DIR}
-    USES_TERMINAL
-    COMMENT "Installing fenster headers")
-  add_dependencies(fenster fenster-install-headers)
-  if(TARGET ports)
-    add_dependencies(fenster ports)
+  if(EXISTS ${FENSTER_DIR}/Makefile)
+    if(IS_DIRECTORY ${FENSTER_DIR}/libfenster/inc)
+      list(APPEND APPLICATIONS_ALL_INC_DIRS ${FENSTER_DIR}/libfenster/inc)
+    endif()
+    if(IS_DIRECTORY ${FENSTER_DIR}/libproperties/inc)
+      list(APPEND APPLICATIONS_ALL_INC_DIRS ${FENSTER_DIR}/libproperties/inc)
+    endif()
+    set(_fenster_env
+      "target=ghost"
+      "SYSROOT=${SYSROOT}"
+      "CXX=${CMAKE_CXX_COMPILER}"
+      "AR=${CMAKE_AR}"
+      "CXXFLAGS=--sysroot=${SYSROOT} -I${SYSROOT}/system/include/freetype2"
+      "LDFLAGS=--sysroot=${SYSROOT} -L${SYSROOT}/system/lib -Wl,-rpath-link,${SYSROOT}/system/lib"
+    )
+    add_custom_target(fenster ALL
+      COMMAND ${CMAKE_COMMAND} -E env ${_fenster_env} make
+      WORKING_DIRECTORY ${FENSTER_DIR}
+      USES_TERMINAL
+      COMMENT "Building fenster (libproperties/libfenster/server)")
+    add_custom_target(fenster-install-headers
+      COMMAND ${CMAKE_COMMAND} -E env ${_fenster_env} make install-headers
+      WORKING_DIRECTORY ${FENSTER_DIR}
+      USES_TERMINAL
+      COMMENT "Installing fenster headers")
+    add_dependencies(fenster fenster-install-headers)
+    if(TARGET ports)
+      add_dependencies(fenster ports)
+    endif()
   endif()
 endif()
 set(_APP_INSTALL_TARGETS)
@@ -143,6 +158,13 @@ foreach(child ${children})
   if(child STREQUAL "core")
     # core utilities are handled separately (multiple sub-apps)
     continue()
+  endif()
+  if(NOT GHOST_ENABLE_FENSTER)
+    list(FIND FENSTER_DEPENDENT_APPS ${child} _fenster_idx)
+    if(NOT _fenster_idx EQUAL -1)
+      message(STATUS "Skipping ${child}: GHOST_ENABLE_FENSTER=OFF")
+      continue()
+    endif()
   endif()
   # Skip libinput build if libproperties is missing
   if(child STREQUAL "libinput")
@@ -296,8 +318,18 @@ if(TARGET fenster)
   endforeach()
 endif()
 
+# Ensure ghmwm menu targets have their apps built/installed when available
+if(TARGET app_ghmwm)
+  if(TARGET terminal-install)
+    add_dependencies(app_ghmwm terminal-install)
+  endif()
+  if(TARGET calculator-install)
+    add_dependencies(app_ghmwm calculator-install)
+  endif()
+endif()
+
 # Core shell utilities (applications/core) - each subdirectory src-<name> builds a dedicated binary
-set(_CORE_APPS echo lines ls read reverse write)
+set(_CORE_APPS cat cp echo lines ls mv read reverse rm write uname)
 foreach(core_app ${_CORE_APPS})
   set(core_src_dir ${CMAKE_CURRENT_SOURCE_DIR}/core/src-${core_app})
   if(EXISTS ${core_src_dir})
@@ -332,7 +364,7 @@ if(TARGET applications-libs)
   if(_LIB_HEADER_INSTALL_TARGETS)
     add_dependencies(applications-libs ${_LIB_HEADER_INSTALL_TARGETS})
   endif()
-  if(TARGET fenster)
+  if(GHOST_ENABLE_FENSTER AND TARGET fenster)
     add_dependencies(applications-libs fenster)
   endif()
   if(TARGET libapi-install-headers)

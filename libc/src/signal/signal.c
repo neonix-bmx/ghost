@@ -20,20 +20,22 @@
 
 #include "signal.h"
 #include "signal_internal.h"
+#include "errno.h"
+
+sig_handler_t __signal_handlers[SIG_COUNT] = { SIG_DFL };
 
 /**
  *
  */
 sig_handler_t signal(int sig, sig_handler_t handler) {
 
-	// check if default handler
-	if(handler == SIG_DFL) {
-
-		if(sig == SIGINT) {
-			handler = sig_handler_SIG_INT;
-		}
+	if(sig < 0 || sig >= SIG_COUNT)
+	{
+		errno = EINVAL;
+		return SIG_ERR;
 	}
 
-	// i refuse to further deal with signals
-	return 0;
+	sig_handler_t previous = __signal_handlers[sig];
+	__signal_handlers[sig] = handler;
+	return previous;
 }

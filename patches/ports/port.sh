@@ -101,7 +101,7 @@ fi
 
 # attempt to download source archive
 echo "downloading source from '$REMOTE_ARCHIVE'..."
-curl "$REMOTE_ARCHIVE" -k -o $BUILD_DIR/$ARCHIVE
+curl -L "$REMOTE_ARCHIVE" -k -o $BUILD_DIR/$ARCHIVE
 if [ $? != 0 ]; then
 	fail "unable to download remote archive"
 fi
@@ -115,10 +115,50 @@ if [ ! -d "$BUILD_DIR/$UNPACKED_DIR" ]; then
 fi
 
 # patch it
+patch_config_sub() {
+	local dir="$1"
+	if [ -z "$dir" ] || [ ! -d "$dir" ]; then
+		return
+	fi
+
+	while IFS= read -r -d '' file; do
+		local base
+		base=$(dirname "$file")
+		if [ -f "$base/config.sub.orig" ]; then
+			continue
+		fi
+		mv "$file" "$base/config.sub.orig"
+		cat > "$file" << 'EOF'
+#!/bin/sh
+input="$1"
+case "$input" in
+	*-*-ghost)
+		echo "$input"
+		exit 0
+		;;
+	*-ghost-*)
+		echo "$input"
+		exit 0
+		;;
+	*-ghost)
+		# Expand 2-part CPU-OS to CPU-unknown-OS for autotools.
+		cpu="${input%-ghost}"
+		echo "${cpu}-unknown-ghost"
+		exit 0
+		;;
+esac
+exec "$(dirname "$0")/config.sub.orig" "$@"
+EOF
+		chmod +x "$file"
+	done < <(find "$dir" -name config.sub -print0)
+}
+
 if [ -f "$PACKAGE/patch.diff" ]; then
 	echo "applying patch"
 	((cd "$BUILD_DIR/$UNPACKED_DIR" && patch -p1) < $PACKAGE/patch.diff) | sed 's/^/    /'
 fi
+
+patch_config_sub "$BUILD_DIR/$UNPACKED_DIR"
 
 # run port install task
 echo "installing port"

@@ -45,4 +45,12 @@ g_fs_open_status filesystemRamdiskDelegateTruncate(g_fs_node* file);
 
 g_fs_directory_refresh_status filesystemRamdiskDelegateRefreshDir(g_fs_node* dir);
 
+g_fs_mkdir_status filesystemRamdiskDelegateCreateDirectory(g_fs_node* parent, const char* name, g_fs_node** outDir);
+
+g_fs_unlink_status filesystemRamdiskDelegateUnlink(g_fs_node* node);
+
+g_fs_rmdir_status filesystemRamdiskDelegateRmdir(g_fs_node* node);
+
+g_fs_rename_status filesystemRamdiskDelegateRename(g_fs_node* node, g_fs_node* newParent, const char* newName);
+
 #endif

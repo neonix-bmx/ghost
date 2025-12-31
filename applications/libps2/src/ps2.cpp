@@ -38,6 +38,7 @@ void (*registeredMouseCallback)(int16_t, int16_t, uint8_t, int8_t);
 void (*registeredKeyboardCallback)(uint8_t);
 
 void ps2HandlePacket();
+static bool ps2ReadDataByte(uint8_t* out);
 
 ps2_status_t ps2Initialize(void (*mouseCallback)(int16_t, int16_t, uint8_t, int8_t),
                            void (*keyboardCallback)(uint8_t))
@@ -146,20 +147,30 @@ ps2_status_t ps2InitializeMouse()
 		return G_PS2_STATUS_FAILED_INITIALIZE;
 	}
 
-	// enable extended stuff for scrolling
-	if(ps2WriteToMouse(0xF3) ||
-	   ps2WriteToMouse(200) ||
-	   ps2WriteToMouse(0xF3) ||
-	   ps2WriteToMouse(100) ||
-	   ps2WriteToMouse(0xF3) ||
-	   ps2WriteToMouse(80))
+	// enable extended stuff for scrolling (IntelliMouse), then verify device ID
+	intelliMouseMode = false;
+	bool intelliEnabled = !(ps2WriteToMouse(0xF3) ||
+	                        ps2WriteToMouse(200) ||
+	                        ps2WriteToMouse(0xF3) ||
+	                        ps2WriteToMouse(100) ||
+	                        ps2WriteToMouse(0xF3) ||
+	                        ps2WriteToMouse(80));
+	if(!intelliEnabled)
 	{
-		intelliMouseMode = false;
 		klog("failed to enable intellimouse mode");
 	}
 	else
 	{
-		intelliMouseMode = true;
+		uint8_t mouseId = 0;
+		if(!ps2WriteToMouse(0xF2) && ps2ReadDataByte(&mouseId))
+		{
+			if(mouseId >= 0x03)
+				intelliMouseMode = true;
+		}
+		else
+		{
+			klog("failed to read mouse id; falling back to standard mode");
+		}
 	}
 
 	return G_PS2_STATUS_SUCCESS;
@@ -234,7 +245,7 @@ void ps2HandlePacket()
 		offY = offY < 0 ? INT8_MIN : INT8_MAX;
 
 	if(registeredMouseCallback)
-		registeredMouseCallback(offX, -offY, flags, scroll);
+		registeredMouseCallback(-offX, offY, flags, scroll);
 }
 
 void ps2WaitForBuffer(ps2_buffer_t buffer)
@@ -280,4 +291,19 @@ int ps2WriteToMouse(uint8_t value)
 		return 1;
 	}
 	return 0;
+}
+
+static bool ps2ReadDataByte(uint8_t* out)
+{
+	int timeout = 10000;
+	while(timeout--)
+	{
+		if((g_io_port_read_byte(G_PS2_STATUS_PORT) & 0x01) != 0)
+		{
+			*out = g_io_port_read_byte(G_PS2_DATA_PORT);
+			return true;
+		}
+		asm volatile("pause");
+	}
+	return false;
 }

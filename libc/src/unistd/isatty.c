@@ -19,11 +19,21 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "unistd.h"
-#include <ghost/system.h>
+#include "errno.h"
 
 /**
  *
  */
 int isatty(int fd) {
-	__G_NOT_IMPLEMENTED(isatty);
+	if(fd < 0)
+	{
+		errno = EBADF;
+		return 0;
+	}
+
+	if(fd == 0 || fd == 1 || fd == 2)
+		return 1;
+
+	errno = ENOTTY;
+	return 0;
 }

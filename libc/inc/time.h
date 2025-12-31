@@ -38,6 +38,9 @@ typedef long clock_t;
 
 #define CLOCKS_PER_SEC 1000000L
 
+#define CLOCK_REALTIME 0
+#define CLOCK_MONOTONIC 1
+
 #define TIME_UTC 1
 
 /**
@@ -55,6 +58,11 @@ struct tm {
 	int tm_isdst;
 	long __tm_gmtoff;
 	const char *__tm_zone;
+};
+
+struct timespec {
+	time_t tv_sec;
+	long tv_nsec;
 };
 
 /**
@@ -106,6 +114,11 @@ char* asctime(const struct tm *);
  *
  */
 char* ctime(const time_t *);
+
+struct tm* localtime_r(const time_t* timep, struct tm* result);
+
+int clock_gettime(clockid_t clk_id, struct timespec* tp);
+int nanosleep(const struct timespec* req, struct timespec* rem);
 
 __END_C
 

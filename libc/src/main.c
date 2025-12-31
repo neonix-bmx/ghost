@@ -32,6 +32,7 @@
 
 void __g_init_libc_call_init();
 void __g_fini_libc_call_fini();
+void __cxa_finalize(void* dso_handle);
 
 /* Avoid macro collision: musl features.h defines 'weak' macro, but we want GCC attribute token here */
 #ifdef weak
@@ -99,6 +100,8 @@ void __g_init_libc()
  */
 void __g_fini_libc()
 {
+	__cxa_finalize(0);
+
 	// call fini functions
 	__g_fini_libc_call_fini();
 

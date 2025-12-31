@@ -152,6 +152,10 @@ void syscallRegisterAll()
 	_syscallRegister(G_SYSCALL_FS_CLOSE_DIRECTORY, (g_syscall_handler) syscallFsCloseDirectory, true);
 	_syscallRegister(G_SYSCALL_FS_REAL_PATH, (g_syscall_handler) syscallFsRealPath, true);
 	_syscallRegister(G_SYSCALL_FS_PUBLISH_PIPE, (g_syscall_handler) syscallFsPublishPipe, true);
+	_syscallRegister(G_SYSCALL_FS_UNLINK, (g_syscall_handler) syscallFsUnlink, true);
+	_syscallRegister(G_SYSCALL_FS_RENAME, (g_syscall_handler) syscallFsRename, true);
+	_syscallRegister(G_SYSCALL_FS_MKDIR, (g_syscall_handler) syscallFsMkdir, true);
+	_syscallRegister(G_SYSCALL_FS_RMDIR, (g_syscall_handler) syscallFsRmdir, true);
 
 	// System
 	_syscallRegister(G_SYSCALL_LOG, (g_syscall_handler) syscallLog);

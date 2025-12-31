@@ -30,6 +30,8 @@ __BEGIN_C
  */
 void sig_handler_SIG_INT(int signal);
 
+extern sig_handler_t __signal_handlers[SIG_COUNT];
+
 __END_C
 
 #endif

@@ -30,6 +30,9 @@ __BEGIN_C
 
 extern char **environ;
 extern char *optarg;
+extern int optind;
+extern int opterr;
+extern int optopt;
 
 // constants for use with <access>
 #define	F_OK		0	// file existence
@@ -81,6 +84,14 @@ pid_t getppid();
  * POSIX wrapper for <g_sleep>, but with seconds instead of milliseconds
  */
 unsigned sleep(unsigned seconds);
+int usleep(useconds_t usec);
+long sysconf(int name);
+
+#define _SC_PAGESIZE 1
+#define _SC_PAGE_SIZE _SC_PAGESIZE
+#define _SC_CLK_TCK 2
+#define _SC_NPROCESSORS_ONLN 3
+#define _SC_NPROCESSORS_CONF 4
 
 /**
  *
@@ -103,6 +114,15 @@ int pipe(int fds[2]);
 int dup(int oldfd);
 int dup2(int oldfd, int newfd);
 pid_t fork(void);
+int getopt(int argc, char * const argv[], const char *optstring);
+char* getlogin(void);
+void _exit(int status);
+uid_t getuid(void);
+gid_t getgid(void);
+uid_t geteuid(void);
+gid_t getegid(void);
+ssize_t readlink(const char* path, char* buf, size_t bufsize);
+ssize_t readlinkat(int dirfd, const char* path, char* buf, size_t bufsize);
 
 
 __END_C

@@ -224,6 +224,7 @@ struct g_memory_file_ondemand
 struct g_process
 {
     g_pid id;
+    g_pid parentId;
     g_mutex lock;
 
     g_task* main;

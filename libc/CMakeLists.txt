@@ -79,3 +79,5 @@ add_custom_target(libc-install-headers
   COMMAND ${CMAKE_COMMAND} -E make_directory ${SYSROOT}/system/include
   COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBC_INC}/ ${SYSROOT}/system/include
   COMMENT "Installing libc headers")
+
+add_dependencies(libc-install libc-install-headers)

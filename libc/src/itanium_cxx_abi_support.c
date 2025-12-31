@@ -22,10 +22,46 @@
 // standard. These functions are required by GCC for special cases, see the
 // individual documentation for details.
 
-/**
- *
- */
-extern void __cxa_atexit(void (*func)(void*), void* arg, void* dso_handle) {
-	// TODO
+typedef struct {
+	void (*func)(void*);
+	void* arg;
+	void* dso_handle;
+	int called;
+} g_atexit_entry;
+
+#define G_ATEXIT_MAX 64
+
+static g_atexit_entry g_atexit_entries[G_ATEXIT_MAX];
+static unsigned int g_atexit_count = 0;
+
+int __cxa_atexit(void (*func)(void*), void* arg, void* dso_handle) {
+	if(func == 0 || g_atexit_count >= G_ATEXIT_MAX) {
+		return -1;
+	}
+
+	g_atexit_entries[g_atexit_count].func = func;
+	g_atexit_entries[g_atexit_count].arg = arg;
+	g_atexit_entries[g_atexit_count].dso_handle = dso_handle;
+	g_atexit_entries[g_atexit_count].called = 0;
+	++g_atexit_count;
+	return 0;
+}
+
+void __cxa_finalize(void* dso_handle) {
+	if(g_atexit_count == 0) {
+		return;
+	}
+
+	for(unsigned int i = g_atexit_count; i > 0; --i) {
+		g_atexit_entry* entry = &g_atexit_entries[i - 1];
+		if(entry->called) {
+			continue;
+		}
+		if(dso_handle != 0 && entry->dso_handle != dso_handle) {
+			continue;
+		}
+		entry->called = 1;
+		entry->func(entry->arg);
+	}
 }
 

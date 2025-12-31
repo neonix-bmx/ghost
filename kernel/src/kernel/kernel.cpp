@@ -226,10 +226,10 @@ void kernelInitializationThread()
 	kernelSpawnService("/applications/ps2driver.bin", "", G_SECURITY_LEVEL_DRIVER);
 
 	G_PRETTY_BOOT_STATUS_P(80);
-	// Replace fenster with ghmwm (minimal window manager / framebuffer demo)
-	kernelSpawnService("/applications/ghmwm.bin", "", G_SECURITY_LEVEL_APPLICATION);
-	// kernelSpawnService("/applications/fenster.bin", "", G_SECURITY_LEVEL_APPLICATION);
+	// ghmwm disabled for now
+	// kernelSpawnService("/applications/ghmwm.bin", "", G_SECURITY_LEVEL_APPLICATION);
 	// kernelSpawnService("/applications/tester.bin", "", G_SECURITY_LEVEL_APPLICATION);
+	kernelSpawnService("/applications/ghsh.bin", "", G_SECURITY_LEVEL_APPLICATION);
 	// G_PRETTY_BOOT_STATUS_P(80);
 	// kernelSpawnService("/applications/terminal.bin", "--headless", G_SECURITY_LEVEL_DRIVER);
 

@@ -20,11 +20,39 @@
 
 #include "stdio.h"
 #include "stdlib.h"
+#include "string.h"
+
+#include "unistd.h"
+
+static int env_key_match(const char* entry, const char* key, size_t keylen)
+{
+	return (strncmp(entry, key, keylen) == 0 && entry[keylen] == '=');
+}
 
 /**
  *
  */
 char* getenv(const char* key)
 {
-    return "";
+	if(!key || key[0] == '\0')
+		return 0;
+
+	if(!environ)
+	{
+		if(strcmp(key, "TERM") == 0)
+			return (char*) "vt100";
+		return 0;
+	}
+
+	size_t keylen = strlen(key);
+	for(int i = 0; environ[i]; ++i)
+	{
+		if(env_key_match(environ[i], key, keylen))
+			return environ[i] + keylen + 1;
+	}
+
+	if(strcmp(key, "TERM") == 0)
+		return (char*) "vt100";
+
+	return 0;
 }
